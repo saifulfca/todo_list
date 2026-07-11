@@ -500,6 +500,34 @@
   .ocr-row .ocr-cat { max-width: 130px; }
   .ocr-auto { font-size: 9.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; flex-shrink: 0; }
   .ocr-empty { text-align: center; padding: 20px; color: var(--text-faint); font-size: 13.5px; }
+  .ocr-recur { font-size: 9.5px; font-weight: 700; color: var(--low); background: var(--low-bg); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+
+  /* quick-add hint */
+  .qa-hint { font-size: 11.5px; color: var(--text-faint); padding: 4px 6px 2px; line-height: 1.5; }
+  .qa-hint b { color: var(--text-soft); font-weight: 700; }
+
+  /* reminder bell active */
+  #remindBtn.on { background: var(--med-bg); color: var(--med); border-color: var(--med); }
+
+  /* toast action button */
+  .toast { display: flex; align-items: center; gap: 14px; }
+  .toast-act {
+    background: var(--accent); color: #fff; border: none; border-radius: 7px;
+    padding: 5px 12px; font-weight: 700; font-size: 12.5px; cursor: pointer;
+    font-family: var(--font); flex-shrink: 0;
+  }
+  .toast-act:hover { filter: brightness(1.1); }
+
+  /* confetti */
+  .confetti {
+    position: fixed; top: -14px; width: 9px; height: 15px; z-index: 200;
+    border-radius: 2px; opacity: .92; pointer-events: none;
+    animation: confetti-fall 2.5s cubic-bezier(.3,.5,.5,1) forwards;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(106vh) rotate(760deg); opacity: .6; }
+  }
 
   .menu-toggle { display: none; }
 
@@ -566,6 +594,7 @@
       <button class="conn-btn" id="connBtn" title="Connect Google Tasks & Calendar">
         <span class="cdot"></span><span class="label-full" id="connLabel">Connect Google</span>
       </button>
+      <button class="icon-btn" id="remindBtn" title="Turn on due reminders">🔕</button>
       <button class="icon-btn" id="themeToggle" title="Toggle dark mode">🌙</button>
     </div>
 
@@ -611,6 +640,7 @@
               </div>
               <button class="add-btn" id="addTaskBtn">Add Task</button>
             </div>
+            <div class="qa-hint">Quick add — type it all in the title: <b>#tag</b> · <b>!high</b>/<b>!med</b>/<b>!low</b> · <b>@notebook</b> · dates like <b>tomorrow 5pm</b> · repeats like <b>every Monday</b></div>
           </div>
         </div>
 
@@ -621,7 +651,8 @@
           <button class="chip" data-filter="done">Completed</button>
           <button class="chip" data-filter="high">High priority</button>
           <button class="chip" data-filter="today">Due soon</button>
-          <select class="sort-select" id="sortSelect">
+          <button class="chip" id="clearDone" style="margin-left:auto">🧹 Clear completed</button>
+          <select class="sort-select" id="sortSelect" style="margin-left:8px">
             <option value="smart">↕ Smart sort (priority & deadline)</option>
             <option value="manual">✋ Manual order (drag)</option>
           </select>
@@ -770,7 +801,9 @@
       tasks: [],
       theme: "light",
       sortMode: "smart",
-      google: { clientId: "", autoSync: true }
+      google: { clientId: "", autoSync: true },
+      remind: false,
+      notified: []
     };
   }
 
@@ -808,6 +841,8 @@
       data.google = data.google && typeof data.google === "object"
         ? { clientId: data.google.clientId || "", autoSync: data.google.autoSync !== false }
         : { clientId: "", autoSync: true };
+      data.remind = !!data.remind;
+      data.notified = Array.isArray(data.notified) ? data.notified : [];
       data.tasks = data.tasks.map(normalizeTask);
       return data;
     } catch (e) { return seed(); }
@@ -838,8 +873,23 @@
   // ---------- Categories ----------
   function renderCats() {
     catList.innerHTML = "";
-    catList.appendChild(catItem({ id: "all", name: "All Tasks", color: "#9089fc" }, true));
+    const allCount = state.tasks.filter(t => !t.completed).length;
+    const e = endOfToday();
+    const todayCount = state.tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() <= e).length;
+    catList.appendChild(specialItem("all", "All Tasks", "#9089fc", allCount));
+    catList.appendChild(specialItem("today", "Today", "#ef6c4d", todayCount));
     state.categories.forEach(c => catList.appendChild(catItem(c, false)));
+  }
+
+  function specialItem(id, name, color, count) {
+    const li = document.createElement("li");
+    li.className = "cat-item" + (activeCat === id ? " active" : "");
+    li.innerHTML = `
+      <span class="cat-dot" style="background:${color}"></span>
+      <span class="cat-name">${name}</span>
+      <span class="cat-count">${count}</span>`;
+    li.onclick = () => { activeCat = id; render(); document.body.classList.remove("nav-open"); };
+    return li;
   }
 
   function catItem(cat, isAll) {
@@ -896,34 +946,86 @@
     };
   }
 
-  function addTask() {
-    const title = $("taskTitle").value.trim();
-    if (!title) { $("taskTitle").focus(); return; }
-    let cat = activeCat === "all" ? (state.categories[0] && state.categories[0].id) : activeCat;
-    if (!cat) { toast("Create a notebook first"); return; }
-    const tags = $("taskTags").value.split(",").map(s => s.trim()).filter(Boolean);
-    state.tasks.push({
-      id: uid(),
-      categoryId: cat,
-      title,
-      notes: $("taskNotes").value.trim(),
-      priority: $("taskPriority").value,
-      deadline: $("taskDeadline").value || "",
-      completed: false,
-      createdAt: Date.now(),
-      completedAt: null,
-      recur: $("taskRecur").value,
-      subtasks: [],
-      tags,
-      order: minOrder() - 1,
-      _spawned: false,
-      google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
+  // Detect a repeat rule from natural language
+  function detectRecur(text) {
+    const lc = " " + text.toLowerCase() + " ";
+    if (/\bevery month\b|\bmonthly\b|\beach month\b/.test(lc)) return "monthly";
+    if (/\bevery week\b|\bweekly\b|\beach week\b|\bevery (mon|monday|tue|tues|tuesday|wed|weds|wednesday|thu|thur|thurs|thursday|fri|friday|sat|saturday|sun|sunday)\b/.test(lc)) return "weekly";
+    if (/\bevery day\b|\bdaily\b|\beach day\b|\beveryday\b/.test(lc)) return "daily";
+    return "none";
+  }
+
+  // Parse the quick-add box: #tags, !priority, @notebook, natural dates & repeats
+  function parseQuickAdd(input) {
+    let title = input;
+    const tags = [];
+    let priority = null, catId = null;
+
+    title = title.replace(/(^|\s)#([\w-]{1,30})/g, (m, sp, tag) => { tags.push(tag); return sp; });
+
+    title = title.replace(/(^|\s)@([\w-]{1,30})/g, (m, sp, name) => {
+      const n = name.toLowerCase();
+      const cat = state.categories.find(c => c.name.toLowerCase() === n) ||
+                  state.categories.find(c => c.name.toLowerCase().startsWith(n));
+      if (cat) { catId = cat.id; return sp; }
+      return m;
     });
+
+    title = title.replace(/(^|\s)!(high|med|medium|low|h|m|l|1|2|3)\b/gi, (m, sp, p) => {
+      p = p.toLowerCase();
+      priority = (p === "high" || p === "h" || p === "1") ? "high"
+        : (p === "low" || p === "l" || p === "3") ? "low" : "med";
+      return sp;
+    });
+    title = title.replace(/(^|\s)(!{2,3})(?=\s|$)/g, (m, sp, b) => { priority = b.length === 3 ? "high" : "med"; return sp; });
+
+    title = title.replace(/\s{2,}/g, " ").trim();
+
+    return {
+      title,
+      tags,
+      priority,
+      catId,
+      deadline: OCR.guessDeadline(title),
+      recur: detectRecur(title)
+    };
+  }
+
+  function addTask() {
+    const raw = $("taskTitle").value.trim();
+    if (!raw) { $("taskTitle").focus(); return; }
+    const q = parseQuickAdd(raw);
+    if (!q.title) { $("taskTitle").focus(); return; }
+    const isSpecial = activeCat === "all" || activeCat === "today";
+    let cat = q.catId || (isSpecial ? (state.categories[0] && state.categories[0].id) : activeCat);
+    if (!cat) { toast("Create a notebook first"); return; }
+
+    // explicit detail-field values take precedence when the user set them
+    const fieldTags = $("taskTags").value.split(",").map(s => s.trim()).filter(Boolean);
+    const tags = Array.from(new Set([...q.tags, ...fieldTags]));
+    const fieldDeadline = $("taskDeadline").value;
+    const fieldRecur = $("taskRecur").value;
+    const fieldPrio = $("taskPriority").value;
+
+    state.tasks.push(createTaskObj({
+      categoryId: cat,
+      title: q.title,
+      notes: $("taskNotes").value.trim(),
+      priority: q.priority || fieldPrio || "med",
+      deadline: fieldDeadline || q.deadline || "",
+      recur: fieldRecur !== "none" ? fieldRecur : q.recur,
+      tags
+    }));
+
     $("taskTitle").value = ""; $("taskNotes").value = ""; $("taskTags").value = "";
     $("taskDeadline").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
     $("addCard").classList.remove("open");
     save(); render();
-    toast("Task added ✓");
+    const bits = [];
+    if (q.deadline && !fieldDeadline) bits.push("📅 due set");
+    if ((fieldRecur !== "none" ? fieldRecur : q.recur) !== "none") bits.push("🔁 repeat");
+    if (q.catId) bits.push("→ " + (state.categories.find(c => c.id === q.catId) || {}).name);
+    toast("Task added ✓" + (bits.length ? "  ·  " + bits.join(" · ") : ""));
   }
 
   function nextDeadline(iso, recur) {
@@ -965,22 +1067,87 @@
       });
       toast("🔁 Next occurrence scheduled");
     }
+    if (!t.completed) removeNotified(t.id); // re-opened -> allow future reminder
     save(); render();
     Google.autoSync(t);
+    if (t.completed) maybeCelebrate();
   }
 
+  function removeNotified(id) {
+    if (state.notified && state.notified.includes(id)) {
+      state.notified = state.notified.filter(x => x !== id);
+    }
+  }
+
+  function maybeCelebrate() {
+    const scope = scopeTasks();
+    if (scope.length >= 1 && scope.every(t => t.completed)) celebrate();
+  }
+  function celebrate() {
+    const colors = ["#4f46e5", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#0ea5e9", "#8b5cf6"];
+    for (let i = 0; i < 90; i++) {
+      const c = document.createElement("div");
+      c.className = "confetti";
+      c.style.left = Math.random() * 100 + "vw";
+      c.style.background = colors[i % colors.length];
+      c.style.animationDelay = (Math.random() * 0.4) + "s";
+      c.style.animationDuration = (2 + Math.random() * 1.2) + "s";
+      c.style.width = (6 + Math.random() * 6) + "px";
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 3600);
+    }
+    toast("🎉 All done here — great work!");
+  }
+
+  let pendingDelete = null; // { tasks:[], timer }
+  function finalizePendingDelete() {
+    if (!pendingDelete) return;
+    clearTimeout(pendingDelete.timer);
+    pendingDelete.tasks.forEach(t => Google.remoteDelete(t));
+    pendingDelete = null;
+  }
   function deleteTask(id) {
+    finalizePendingDelete();
     const t = state.tasks.find(x => x.id === id);
-    if (t) Google.remoteDelete(t);
+    if (!t) return;
     state.tasks = state.tasks.filter(x => x.id !== id);
     expanded.delete(id);
-    save(); render(); toast("Task deleted");
+    save(); render();
+    const timer = setTimeout(finalizePendingDelete, 6000);
+    pendingDelete = { tasks: [t], timer };
+    toast("Task deleted", "Undo", () => {
+      clearTimeout(timer);
+      state.tasks.push(t);
+      pendingDelete = null;
+      save(); render();
+      toast("Task restored");
+    });
+  }
+
+  function clearCompleted() {
+    finalizePendingDelete();
+    const done = scopeTasks().filter(t => t.completed);
+    if (!done.length) { toast("No completed tasks here"); return; }
+    const ids = new Set(done.map(t => t.id));
+    state.tasks = state.tasks.filter(t => !ids.has(t.id));
+    done.forEach(t => expanded.delete(t.id));
+    save(); render();
+    const timer = setTimeout(finalizePendingDelete, 7000);
+    pendingDelete = { tasks: done, timer };
+    toast("Cleared " + done.length + " completed", "Undo", () => {
+      clearTimeout(timer);
+      done.forEach(t => state.tasks.push(t));
+      pendingDelete = null;
+      save(); render();
+      toast("Restored " + done.length + " task" + (done.length === 1 ? "" : "s"));
+    });
   }
 
   function updateTask(id, patch) {
     const t = state.tasks.find(x => x.id === id);
     if (!t) return;
     Object.assign(t, patch);
+    if ("deadline" in patch) removeNotified(id); // new due date -> allow reminder again
     save();
     Google.autoSync(t);
   }
@@ -1028,8 +1195,15 @@
     });
   }
 
+  function endOfToday() { const d = new Date(); d.setHours(23, 59, 59, 999); return d.getTime(); }
+  function scopeTasks() {
+    if (activeCat === "all") return state.tasks;
+    if (activeCat === "today") { const e = endOfToday(); return state.tasks.filter(t => t.deadline && new Date(t.deadline).getTime() <= e); }
+    return state.tasks.filter(t => t.categoryId === activeCat);
+  }
+
   function visibleTasks() {
-    let arr = state.tasks.filter(t => activeCat === "all" || t.categoryId === activeCat);
+    let arr = scopeTasks();
     if (filter === "active") arr = arr.filter(t => !t.completed);
     else if (filter === "done") arr = arr.filter(t => t.completed);
     else if (filter === "high") arr = arr.filter(t => t.priority === "high" && !t.completed);
@@ -1599,7 +1773,7 @@
     buildReview(text) {
       $("ocrRaw").value = text;
       const titles = this.parse(text);
-      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), deadline: this.guessDeadline(t), include: true, auto: true }));
+      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), deadline: this.guessDeadline(t), recur: detectRecur(t), include: true, auto: true }));
       this.renderRows();
       $("ocrAssignAll").innerHTML = '<option value="">— keep auto —</option>' + catOptions(null);
       $("ocrAssignAll").value = "";
@@ -1610,7 +1784,7 @@
 
     reparse() {
       const titles = this.parse($("ocrRaw").value);
-      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), deadline: this.guessDeadline(t), include: true, auto: true }));
+      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), deadline: this.guessDeadline(t), recur: detectRecur(t), include: true, auto: true }));
       this.renderRows();
     },
 
@@ -1631,6 +1805,7 @@
             <div class="ocr-line1">
               <input class="ocr-title" value="${esc(r.text)}" />
               ${r.auto ? '<span class="ocr-auto" title="Auto-detected">auto</span>' : ""}
+              ${r.recur && r.recur !== "none" ? '<span class="ocr-recur" title="Repeat detected">🔁 ' + RECUR_LABEL[r.recur] + "</span>" : ""}
             </div>
             <div class="ocr-line2">
               <select class="ocr-prio" title="Priority">
@@ -1659,7 +1834,7 @@
       chosen.forEach(r => {
         const catId = r.catId || (state.categories[0] && state.categories[0].id);
         if (!catId) return;
-        state.tasks.push(createTaskObj({ categoryId: catId, title: r.text.trim(), priority: r.priority, deadline: r.deadline || "" }));
+        state.tasks.push(createTaskObj({ categoryId: catId, title: r.text.trim(), priority: r.priority, deadline: r.deadline || "", recur: r.recur || "none" }));
         count++;
       });
       save(); render();
@@ -1707,6 +1882,61 @@
     }
   });
 
+  // ---------- Due reminders (browser notifications) ----------
+  const Remind = {
+    timer: null,
+    init() {
+      if (state.remind && ("Notification" in window) && Notification.permission === "granted") this.start();
+      else if (state.remind) { state.remind = false; save(); }
+      this.updateUI();
+    },
+    updateUI() {
+      const b = $("remindBtn");
+      if (!b) return;
+      const on = !!state.remind;
+      b.classList.toggle("on", on);
+      b.textContent = on ? "🔔" : "🔕";
+      b.title = on ? "Due reminders on — click to turn off" : "Turn on due reminders";
+    },
+    async toggle() {
+      if (state.remind) { state.remind = false; this.stop(); toast("Reminders off"); }
+      else {
+        if (!("Notification" in window)) { toast("This browser doesn't support notifications"); return; }
+        let perm = Notification.permission;
+        if (perm === "default") { try { perm = await Notification.requestPermission(); } catch (e) {} }
+        if (perm !== "granted") { toast("Allow notifications in your browser to use reminders"); return; }
+        state.remind = true; this.start(); toast("🔔 Due reminders on");
+      }
+      save(); this.updateUI();
+    },
+    start() { this.stop(); this.check(); this.timer = setInterval(() => this.check(), 30000); },
+    stop() { if (this.timer) clearInterval(this.timer); this.timer = null; },
+    check() {
+      if (!state.remind || !("Notification" in window) || Notification.permission !== "granted") return;
+      const now = Date.now();
+      const notified = new Set(state.notified || []);
+      let changed = false;
+      state.tasks.forEach(t => {
+        if (t.completed || !t.deadline) return;
+        const due = new Date(t.deadline).getTime();
+        if (due <= now && due > now - 24 * 3600000 && !notified.has(t.id)) {
+          const cat = state.categories.find(c => c.id === t.categoryId);
+          try {
+            const n = new Notification("⏰ Task due: " + t.title, {
+              body: (cat ? cat.name + " · " : "") + "Priority: " + PRIO_LABEL[t.priority],
+              tag: t.id
+            });
+            n.onclick = () => { window.focus(); n.close(); };
+          } catch (e) {}
+          notified.add(t.id); changed = true;
+        }
+      });
+      if (changed) { state.notified = Array.from(notified).slice(-300); save(); }
+    }
+  };
+  $("remindBtn").onclick = () => Remind.toggle();
+  $("clearDone").onclick = clearCompleted;
+
   // ---------- Render ----------
   function render() {
     document.body.classList.toggle("manual-sort", state.sortMode === "manual");
@@ -1714,8 +1944,8 @@
     document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.filter === filter));
 
     renderCats();
-    const catObj = activeCat === "all"
-      ? { name: "All Tasks", color: "#9089fc" }
+    const catObj = activeCat === "all" ? { name: "All Tasks", color: "#9089fc" }
+      : activeCat === "today" ? { name: "Today", color: "#ef6c4d" }
       : state.categories.find(c => c.id === activeCat) || { name: "All Tasks", color: "#9089fc" };
     catHeading.textContent = catObj.name;
     catDot.style.background = catObj.color;
@@ -1735,7 +1965,7 @@
   }
 
   function renderStats() {
-    const scope = state.tasks.filter(t => activeCat === "all" || t.categoryId === activeCat);
+    const scope = scopeTasks();
     const total = scope.length;
     const done = scope.filter(t => t.completed).length;
     const active = total - done;
@@ -1758,7 +1988,7 @@
 
     const di = deadlineInfo(t.deadline);
     const catObj = state.categories.find(c => c.id === t.categoryId);
-    const catBadge = activeCat === "all" && catObj
+    const catBadge = (activeCat === "all" || activeCat === "today") && catObj
       ? `<span class="badge" style="background:${catObj.color}1f;color:${catObj.color}">${esc(catObj.name)}</span>` : "";
     const subDone = t.subtasks.filter(s => s.done).length;
     const subTotal = t.subtasks.length;
@@ -1912,8 +2142,7 @@
 
   function reorder(fromId, toId) {
     if (!fromId || fromId === toId) return;
-    const active = sortTasks(state.tasks.filter(t =>
-      (activeCat === "all" || t.categoryId === activeCat) && !t.completed));
+    const active = sortTasks(scopeTasks().filter(t => !t.completed));
     const ids = active.map(t => t.id);
     const fi = ids.indexOf(fromId), ti = ids.indexOf(toId);
     if (fi < 0 || ti < 0) return;
@@ -1944,9 +2173,15 @@
   // ---------- Search ----------
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
-    if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA" && !document.activeElement.isContentEditable) {
-      e.preventDefault(); $("searchInput").focus();
+    if (e.key === "Escape") {
+      [catModal, gModal, ocrModal].forEach(mm => mm && mm.classList.remove("open"));
+      return;
     }
+    const el = document.activeElement;
+    const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+    if (typing) return;
+    if (e.key === "/") { e.preventDefault(); $("searchInput").focus(); }
+    else if (e.key === "n" || e.key === "N") { e.preventDefault(); $("addCard").classList.add("open"); $("taskTitle").focus(); }
   });
 
   // ---------- Category modal ----------
@@ -2016,15 +2251,28 @@
 
   // ---------- Toast ----------
   let toastTimer;
-  function toast(msg) {
-    const el = $("toast"); el.textContent = msg; el.classList.add("show");
+  function toast(msg, actionLabel, actionFn) {
+    const el = $("toast");
+    el.innerHTML = "";
+    const span = document.createElement("span");
+    span.textContent = msg;
+    el.appendChild(span);
+    if (actionLabel && typeof actionFn === "function") {
+      const btn = document.createElement("button");
+      btn.className = "toast-act";
+      btn.textContent = actionLabel;
+      btn.onclick = () => { el.classList.remove("show"); actionFn(); };
+      el.appendChild(btn);
+    }
+    el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+    toastTimer = setTimeout(() => el.classList.remove("show"), actionLabel ? 6000 : 2400);
   }
 
   // ---------- Init ----------
   applyTheme();
   Google.init();
+  Remind.init();
   render();
 })();
 </script>

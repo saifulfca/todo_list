@@ -486,14 +486,19 @@
   .assign-all select { border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; background: var(--surface); color: var(--text); font-family: var(--font); outline: none; }
   .assign-all .chip { padding: 6px 12px; }
 
-  .ocr-rows { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
-  .ocr-row { display: flex; align-items: center; gap: 9px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .ocr-rows { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+  .ocr-row { display: flex; align-items: flex-start; gap: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
   .ocr-row.excluded { opacity: .45; }
+  .ocr-row .ocr-check { margin-top: 4px; }
+  .ocr-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  .ocr-line1 { display: flex; align-items: center; gap: 8px; }
+  .ocr-line2 { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
   .ocr-row .ocr-title { flex: 1; min-width: 0; border: 1px solid transparent; background: var(--surface); border-radius: 7px; padding: 7px 9px; font-size: 13.5px; font-family: var(--font); color: var(--text); outline: none; }
   .ocr-row .ocr-title:focus { border-color: var(--accent); }
-  .ocr-row select { border: 1px solid var(--border); border-radius: 7px; padding: 6px 6px; font-size: 12px; background: var(--surface); color: var(--text); font-family: var(--font); outline: none; flex-shrink: 0; }
-  .ocr-row .ocr-cat { max-width: 118px; }
-  .ocr-auto { font-size: 9.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; flex-shrink: 0; }
+  .ocr-row select, .ocr-row .ocr-date { border: 1px solid var(--border); border-radius: 7px; padding: 6px 7px; font-size: 12px; background: var(--surface); color: var(--text); font-family: var(--font); outline: none; }
+  .ocr-row select:focus, .ocr-row .ocr-date:focus { border-color: var(--accent); }
+  .ocr-row .ocr-cat { max-width: 130px; }
+  .ocr-auto { font-size: 9.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; flex-shrink: 0; }
   .ocr-empty { text-align: center; padding: 20px; color: var(--text-faint); font-size: 13.5px; }
 
   .menu-toggle { display: none; }
@@ -1521,10 +1526,80 @@
       return state.categories[0] ? state.categories[0].id : null;
     },
 
+    // Detect a due date/time from a task line -> datetime-local string, else ""
+    guessDeadline(text) {
+      const lc = " " + text.toLowerCase() + " ";
+      const now = new Date();
+      const strip = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+      const addDays = (d, n) => { const x = strip(d); x.setDate(x.getDate() + n); return x; };
+      const comingWeekday = (dow) => { const x = strip(now); let diff = (dow - x.getDay() + 7) % 7; if (diff === 0) diff = 7; x.setDate(x.getDate() + diff); return x; };
+      const pad = (n) => String(n).padStart(2, "0");
+
+      let date = null, hasTime = false, hour = 17, min = 0, m;
+
+      // ISO: 2025-12-25
+      if ((m = lc.match(/\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b/))) {
+        const mo = +m[2], da = +m[3];
+        if (mo >= 1 && mo <= 12 && da >= 1 && da <= 31) date = new Date(+m[1], mo - 1, da);
+      }
+      // Numeric M/D or M/D/Y (US-style)
+      if (!date && (m = lc.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) {
+        let mo = +m[1], da = +m[2], yr = m[3] ? +m[3] : now.getFullYear();
+        if (yr < 100) yr += 2000;
+        if (mo >= 1 && mo <= 12 && da >= 1 && da <= 31) {
+          date = new Date(yr, mo - 1, da);
+          if (!m[3] && date < strip(now)) date.setFullYear(yr + 1);
+        }
+      }
+      // Month name + day  (or day + month name)
+      if (!date) {
+        const months = { jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3, may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8, oct:9, october:9, nov:10, november:10, dec:11, december:11 };
+        const mn = "(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)";
+        m = lc.match(new RegExp("\\b" + mn + "\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b")) ||
+            lc.match(new RegExp("\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?" + mn + "\\b"));
+        if (m) {
+          let mo, da;
+          if (isNaN(+m[1])) { mo = months[m[1]]; da = +m[2]; } else { da = +m[1]; mo = months[m[2]]; }
+          if (mo != null && da >= 1 && da <= 31) {
+            date = new Date(now.getFullYear(), mo, da);
+            if (date < strip(now)) date.setFullYear(now.getFullYear() + 1);
+          }
+        }
+      }
+      // Relative words
+      if (!date) {
+        if (/\bday after tomorrow\b/.test(lc)) date = addDays(now, 2);
+        else if (/\btomorrow\b/.test(lc)) date = addDays(now, 1);
+        else if (/\b(tonight|today|eod|end of day)\b/.test(lc)) { date = strip(now); if (/tonight/.test(lc)) { hour = 20; hasTime = true; } }
+        else if (/\b(eow|end of week)\b/.test(lc)) date = comingWeekday(5);
+        else if (/\bnext week\b/.test(lc)) date = addDays(now, 7);
+        else if ((m = lc.match(/\bin (\d{1,2}) days?\b/))) date = addDays(now, +m[1]);
+        else if ((m = lc.match(/\b(?:next\s+)?(monday|mon|tuesday|tues|tue|wednesday|weds|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat|sunday|sun)\b/))) {
+          const map = { sun:0, sunday:0, mon:1, monday:1, tue:2, tues:2, tuesday:2, wed:3, weds:3, wednesday:3, thu:4, thur:4, thurs:4, thursday:4, fri:5, friday:5, sat:6, saturday:6 };
+          date = comingWeekday(map[m[1]]);
+        }
+      }
+      // Time  (5pm, 5:30 pm, at 9, 17:00)
+      if ((m = lc.match(/\b(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/)) ||
+          (m = lc.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/)) ||
+          (m = lc.match(/\b(\d{1,2}):(\d{2})\b/))) {
+        let h = +m[1], mm = m[2] != null ? +m[2] : 0;
+        const ap = (m[3] || "").replace(/\./g, "");
+        if (ap === "pm" && h < 12) h += 12;
+        if (ap === "am" && h === 12) h = 0;
+        if (h >= 0 && h <= 23 && mm >= 0 && mm <= 59) { hour = h; min = mm; hasTime = true; }
+      }
+
+      if (!date && !hasTime) return "";
+      if (!date) date = strip(now);
+      date.setHours(hour, min, 0, 0);
+      return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) + "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
+    },
+
     buildReview(text) {
       $("ocrRaw").value = text;
       const titles = this.parse(text);
-      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), include: true, auto: true }));
+      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), deadline: this.guessDeadline(t), include: true, auto: true }));
       this.renderRows();
       $("ocrAssignAll").innerHTML = '<option value="">— keep auto —</option>' + catOptions(null);
       $("ocrAssignAll").value = "";
@@ -1535,7 +1610,7 @@
 
     reparse() {
       const titles = this.parse($("ocrRaw").value);
-      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), include: true, auto: true }));
+      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), deadline: this.guessDeadline(t), include: true, auto: true }));
       this.renderRows();
     },
 
@@ -1551,19 +1626,27 @@
         const li = document.createElement("li");
         li.className = "ocr-row" + (r.include ? "" : " excluded");
         li.innerHTML = `
-          <div class="check ocr-check ${r.include ? "checked" : ""}" data-i="${i}" title="Include / exclude"></div>
-          <input class="ocr-title" data-i="${i}" value="${esc(r.text)}" />
-          ${r.auto ? '<span class="ocr-auto" title="Auto-detected">auto</span>' : ""}
-          <select class="ocr-prio" data-i="${i}">
-            <option value="high" ${r.priority==="high"?"selected":""}>🔴</option>
-            <option value="med" ${r.priority==="med"?"selected":""}>🟡</option>
-            <option value="low" ${r.priority==="low"?"selected":""}>🟢</option>
-          </select>
-          <select class="ocr-cat" data-i="${i}">${catOptions(r.catId)}</select>`;
+          <div class="check ocr-check ${r.include ? "checked" : ""}" title="Include / exclude"></div>
+          <div class="ocr-fields">
+            <div class="ocr-line1">
+              <input class="ocr-title" value="${esc(r.text)}" />
+              ${r.auto ? '<span class="ocr-auto" title="Auto-detected">auto</span>' : ""}
+            </div>
+            <div class="ocr-line2">
+              <select class="ocr-prio" title="Priority">
+                <option value="high" ${r.priority==="high"?"selected":""}>🔴 High</option>
+                <option value="med" ${r.priority==="med"?"selected":""}>🟡 Med</option>
+                <option value="low" ${r.priority==="low"?"selected":""}>🟢 Low</option>
+              </select>
+              <select class="ocr-cat" title="Notebook">${catOptions(r.catId)}</select>
+              <input type="datetime-local" class="ocr-date" title="Deadline" value="${r.deadline || ""}" />
+            </div>
+          </div>`;
         li.querySelector(".ocr-check").onclick = () => { this.rows[i].include = !this.rows[i].include; this.renderRows(); };
         li.querySelector(".ocr-title").oninput = (e) => { this.rows[i].text = e.target.value; };
         li.querySelector(".ocr-prio").onchange = (e) => { this.rows[i].priority = e.target.value; };
         li.querySelector(".ocr-cat").onchange = (e) => { this.rows[i].catId = e.target.value; this.rows[i].auto = false; };
+        li.querySelector(".ocr-date").onchange = (e) => { this.rows[i].deadline = e.target.value || ""; };
         list.appendChild(li);
       });
     },
@@ -1576,7 +1659,7 @@
       chosen.forEach(r => {
         const catId = r.catId || (state.categories[0] && state.categories[0].id);
         if (!catId) return;
-        state.tasks.push(createTaskObj({ categoryId: catId, title: r.text.trim(), priority: r.priority }));
+        state.tasks.push(createTaskObj({ categoryId: catId, title: r.text.trim(), priority: r.priority, deadline: r.deadline || "" }));
         count++;
       });
       save(); render();

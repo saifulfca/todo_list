@@ -24,8 +24,8 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 
 - Click **Scan** (in the add-task bar), then **drop an image, browse, or paste** (Ctrl/⌘+V) a screenshot.
 - The app reads the text in your browser (via [Tesseract.js](https://tesseract.js.org/) — no upload to any server) and **splits it into separate tasks**, handling `1.`, `1)`, `-`, `*`, `•`, and checkbox markers, while ignoring email headers and greetings.
-- Each task is **auto-assigned a notebook** (from keywords / matching notebook names) and a **priority** (e.g. "urgent"/"asap" → High).
-- A review step lets you **edit each title, change the notebook/priority, include or exclude lines**, or tweak the raw recognized text and re-parse — then create them all at once.
+- Each task is **auto-assigned a notebook** (from keywords / matching notebook names), a **priority** (e.g. "urgent"/"asap" → High), and a **deadline** when a date/time is present in the text (e.g. "by Friday", "tomorrow at 9am", "Jan 15 5pm", "2026-04-15", "in 3 days", "tonight").
+- A review step lets you **edit each title, change the notebook/priority/deadline, include or exclude lines**, or tweak the raw recognized text and re-parse — then create them all at once.
 
 ### Task management
 - **Priority**: High / Medium / Low, with colored accents and priority-aware sorting.

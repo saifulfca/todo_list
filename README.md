@@ -87,18 +87,23 @@ When you **connect Google** (see setup below), pushing creates the real item and
 - The **Calendar** button opens a pre-filled Google Calendar event.
 - **📆 Export .ics** downloads a standard calendar file for a task or a whole notebook (works with Apple Calendar, Outlook, etc.).
 
-## Connecting Google (one-time, free)
+## Signing in with Google
 
-Real Google **Tasks** sync requires the Google API, which needs OAuth. Because Google sign-in does **not** work from `file://`, host the app on an `http(s)` origin first (GitHub Pages or a local server), then:
+The app has a **"Sign in with Google"** button (top bar → **Connect Google**). Click it, pick your Gmail account, approve access, and your tasks sync with Google Tasks & Calendar — just like signing into any other app.
 
+**Why a one-time setup is still needed:** every "Sign in with Google" button (even Facebook's) is backed by a Google **OAuth Client ID** that the app owner registers once. To make the button truly one-click for everyone, create that Client ID once and paste it into the `GOOGLE_CLIENT_ID` constant near the top of `index.html` — then no one ever sees a setup screen again.
+
+**Create the Client ID once (free):**
 1. Open the [Google Cloud Console](https://console.cloud.google.com/) and create a project.
 2. Enable the **Google Tasks API** and **Google Calendar API**.
-3. Configure the **OAuth consent screen** (External) and add your Google account as a **test user**.
+3. Configure the **OAuth consent screen** (External) and add your Gmail as a **test user**.
 4. Create an **OAuth client ID** → application type **Web application**.
 5. Under **Authorized JavaScript origins**, add the exact origin where the app is served, e.g.
-   - `https://YOUR-USERNAME.github.io` (GitHub Pages), or
+   - `https://saifulfca.github.io` (GitHub Pages), or
    - `http://localhost:8000` (local server).
-6. In the app, click **Connect Google**, paste the **Client ID**, and hit **Save & Connect**.
+6. Either **paste it into `GOOGLE_CLIENT_ID` in `index.html`** (best — makes the button one-click for everyone), **or** open the app → **Connect Google → ⚙ One-time setup** and paste it there (saved on your device).
+
+> Note: Google sign-in doesn't work from `file://` — use the hosted URL or a local server.
 
 ### Hosting options
 - **GitHub Pages:** In the repo, go to **Settings → Pages → Build and deployment → Source: Deploy from a branch**, pick `main` / `/ (root)`, save. Your app will be live at `https://YOUR-USERNAME.github.io/todo_list/`.

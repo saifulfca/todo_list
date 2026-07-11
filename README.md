@@ -19,6 +19,14 @@ That's it. All your data is saved automatically in the browser's local storage o
 - **Tags** (`#urgent`, `#client`, …) shown as chips; click a tag to filter instantly.
 - **Search** across titles, notes, tags, and checklist items (press `/` to jump to search).
 
+### 📷 Scan tasks from a screenshot (OCR)
+Turn an image into tasks — great for emails, meeting notes, or numbered/bulleted lists.
+
+- Click **Scan** (in the add-task bar), then **drop an image, browse, or paste** (Ctrl/⌘+V) a screenshot.
+- The app reads the text in your browser (via [Tesseract.js](https://tesseract.js.org/) — no upload to any server) and **splits it into separate tasks**, handling `1.`, `1)`, `-`, `*`, `•`, and checkbox markers, while ignoring email headers and greetings.
+- Each task is **auto-assigned a notebook** (from keywords / matching notebook names) and a **priority** (e.g. "urgent"/"asap" → High).
+- A review step lets you **edit each title, change the notebook/priority, include or exclude lines**, or tweak the raw recognized text and re-parse — then create them all at once.
+
 ### Task management
 - **Priority**: High / Medium / Low, with colored accents and priority-aware sorting.
 - **Deadlines** with date + time, and smart labels — **Overdue**, **Today**, **Tomorrow**.
@@ -69,8 +77,8 @@ Real Google **Tasks** sync requires the Google API, which needs OAuth. Because G
 
 ## Privacy
 
-Everything runs locally in your browser. Your tasks are stored only in your browser's local storage. Data leaves your device only when you explicitly push to Google (Tasks/Calendar), open a pre-filled calendar event, or export a file. Your Google OAuth Client ID is stored locally and used only to talk to Google's APIs directly from your browser.
+Everything runs locally in your browser. Your tasks are stored only in your browser's local storage. Data leaves your device only when you explicitly push to Google (Tasks/Calendar), open a pre-filled calendar event, or export a file. Your Google OAuth Client ID is stored locally and used only to talk to Google's APIs directly from your browser. **OCR runs entirely on your device** — screenshots are never uploaded anywhere.
 
 ## Tech
 
-Plain HTML, CSS, and vanilla JavaScript in one self-contained file — no build step and no backend. Optional Google sync uses Google's official client libraries (loaded only when online) with the Tasks and Calendar APIs.
+Plain HTML, CSS, and vanilla JavaScript in one self-contained file — no build step and no backend. Optional Google sync uses Google's official client libraries (loaded only when online) with the Tasks and Calendar APIs. Screenshot OCR uses Tesseract.js, loaded on demand from a CDN (needs internet the first time you scan).

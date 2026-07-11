@@ -439,11 +439,70 @@
   .switch input:checked + .track { background: var(--accent); }
   .switch input:checked + .track::before { transform: translateX(18px); }
 
+  /* ---------- Scan button + OCR ---------- */
+  .scan-btn {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    font-size: 13px; font-weight: 650; padding: 7px 13px;
+    border-radius: 9px; border: 1px solid var(--border);
+    background: linear-gradient(135deg, var(--accent-soft), var(--surface-2));
+    color: var(--accent); cursor: pointer; font-family: var(--font); transition: all .15s;
+  }
+  .scan-btn:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+  .scan-btn svg { display: block; }
+
+  .modal.ocr { max-width: 620px; width: 94%; }
+  .modal.ocr h3 { display: flex; align-items: center; gap: 8px; }
+
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: 14px; padding: 34px 20px;
+    text-align: center; cursor: pointer; transition: all .18s; background: var(--surface-2);
+  }
+  .drop-zone:hover, .drop-zone.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop-zone .dz-icon { font-size: 40px; margin-bottom: 10px; }
+  .drop-zone p { font-size: 14.5px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .drop-zone span { font-size: 12.5px; color: var(--text-faint); }
+
+  .ocr-proc { display: flex; gap: 18px; align-items: center; padding: 10px 0; }
+  .ocr-proc img { width: 130px; max-height: 150px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+  .ocr-prog { flex: 1; }
+  .ocr-prog p { font-size: 13.5px; font-weight: 600; color: var(--text-soft); margin: 10px 0 8px; }
+  .spinner {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .ocr-review-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .ocr-review-head span { font-size: 13px; font-weight: 700; color: var(--text); }
+  .link-btn { background: none; border: none; color: var(--accent); font-weight: 650; font-size: 12.5px; cursor: pointer; font-family: var(--font); }
+  .link-btn:hover { text-decoration: underline; }
+  #ocrRaw {
+    width: 100%; min-height: 90px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+    background: var(--surface-2); color: var(--text); resize: vertical; outline: none; margin-bottom: 12px;
+  }
+  .assign-all { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); margin-bottom: 12px; flex-wrap: wrap; }
+  .assign-all select { border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; font-size: 12.5px; background: var(--surface); color: var(--text); font-family: var(--font); outline: none; }
+  .assign-all .chip { padding: 6px 12px; }
+
+  .ocr-rows { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+  .ocr-row { display: flex; align-items: center; gap: 9px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+  .ocr-row.excluded { opacity: .45; }
+  .ocr-row .ocr-title { flex: 1; min-width: 0; border: 1px solid transparent; background: var(--surface); border-radius: 7px; padding: 7px 9px; font-size: 13.5px; font-family: var(--font); color: var(--text); outline: none; }
+  .ocr-row .ocr-title:focus { border-color: var(--accent); }
+  .ocr-row select { border: 1px solid var(--border); border-radius: 7px; padding: 6px 6px; font-size: 12px; background: var(--surface); color: var(--text); font-family: var(--font); outline: none; flex-shrink: 0; }
+  .ocr-row .ocr-cat { max-width: 118px; }
+  .ocr-auto { font-size: 9.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; flex-shrink: 0; }
+  .ocr-empty { text-align: center; padding: 20px; color: var(--text-faint); font-size: 13.5px; }
+
   .menu-toggle { display: none; }
 
   @media (max-width: 720px) {
     .conn-btn .label-full { display: none; }
     .conn-btn { padding: 0 12px; }
+    .scan-btn span { display: none; }
+    .ocr-row .ocr-cat { max-width: 92px; }
     .sidebar {
       position: fixed; z-index: 40; height: 100%; transform: translateX(-100%);
       transition: transform .28s ease; box-shadow: var(--shadow-lg);
@@ -515,6 +574,10 @@
           <div class="add-top">
             <div class="add-plus">＋</div>
             <input type="text" class="title-in" id="taskTitle" placeholder="Add a task and press Enter…" />
+            <button class="scan-btn" id="scanBtn" title="Scan tasks from a screenshot (OCR)">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V6a2 2 0 0 1 2-2h3"/><path d="M21 9V6a2 2 0 0 0-2-2h-3"/><path d="M3 15v3a2 2 0 0 0 2 2h3"/><path d="M21 15v3a2 2 0 0 1-2 2h-3"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+              <span>Scan</span>
+            </button>
           </div>
           <div class="add-details">
             <textarea id="taskNotes" placeholder="Notes / details (optional)"></textarea>
@@ -616,6 +679,53 @@
         <button class="btn-ghost" id="gDisconnect">Disconnect</button>
         <button class="btn-ghost" id="gCancel">Close</button>
         <button class="btn-primary" id="gConnect">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OCR scan modal -->
+  <div class="modal-back" id="ocrModal">
+    <div class="modal ocr">
+      <h3>📷 Scan tasks from a screenshot</h3>
+
+      <div id="ocrStep1">
+        <div class="drop-zone" id="dropZone">
+          <div class="dz-icon">🖼️</div>
+          <p>Drop an image here, click to browse, or paste (Ctrl/⌘+V)</p>
+          <span>Screenshots of emails, numbered lists, notes — each line becomes a task.</span>
+        </div>
+        <input type="file" id="ocrFile" accept="image/*" hidden />
+      </div>
+
+      <div id="ocrStep2" style="display:none">
+        <div class="ocr-proc">
+          <img id="ocrThumb" alt="preview" />
+          <div class="ocr-prog">
+            <div class="spinner"></div>
+            <p id="ocrStatus">Reading text from image…</p>
+            <div class="progress-track"><div class="progress-bar" id="ocrBar"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="ocrStep3" style="display:none">
+        <div class="ocr-review-head">
+          <span id="ocrCount">0 tasks found</span>
+          <button class="link-btn" id="ocrToggleRaw">Edit raw text</button>
+        </div>
+        <textarea id="ocrRaw" style="display:none" spellcheck="false"></textarea>
+        <div class="assign-all">
+          <span>Assign all to:</span>
+          <select id="ocrAssignAll"></select>
+          <button class="chip" id="ocrReparse">↻ Re-parse text</button>
+        </div>
+        <ul class="ocr-rows" id="ocrRows"></ul>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" id="ocrCancel">Cancel</button>
+        <button class="btn-ghost" id="ocrAnother" style="display:none">Choose another</button>
+        <button class="btn-primary" id="ocrCreate" style="display:none">Add tasks</button>
       </div>
     </div>
   </div>
@@ -759,6 +869,26 @@
   function minOrder() {
     const os = state.tasks.map(t => t.order);
     return os.length ? Math.min(...os) : 0;
+  }
+
+  function createTaskObj(fields) {
+    return {
+      id: uid(),
+      categoryId: fields.categoryId,
+      title: fields.title || "",
+      notes: fields.notes || "",
+      priority: fields.priority || "med",
+      deadline: fields.deadline || "",
+      completed: false,
+      createdAt: Date.now(),
+      completedAt: null,
+      recur: fields.recur || "none",
+      subtasks: fields.subtasks || [],
+      tags: fields.tags || [],
+      order: minOrder() - 1,
+      _spawned: false,
+      google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
+    };
   }
 
   function addTask() {
@@ -1265,6 +1395,234 @@
       gModal.classList.remove("open");
     } catch (e) { toast("⚠ " + Google.errMsg(e)); }
   };
+
+  // ---------- OCR: screenshot → tasks ----------
+  const OCR = {
+    TESSERACT_SRC: "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js",
+    loaderP: null,
+    rows: [],        // [{ text, priority, catId, include }]
+    objUrl: null,
+
+    // keyword dictionaries for auto-categorisation of the default notebooks
+    DICT: {
+      office: ["meeting","report","client","project","deadline","email","invoice","budget",
+        "presentation","manager","boss","team","deliverable","proposal","contract","office",
+        "colleague","review","sprint","standup","quarterly","kpi","stakeholder","memo","agenda",
+        "conference","onboarding","hr","payroll","audit","compliance","ticket","release","demo"],
+      personal: ["buy","grocery","groceries","doctor","dentist","family","gym","workout","birthday",
+        "anniversary","rent","appointment","pharmacy","mom","dad","kids","school","vacation","dinner",
+        "laundry","clean","shopping","pay bill","bills","car","insurance","haircut","cook","water plants",
+        "walk","pet","vet","recipe","gift"]
+    },
+
+    load() {
+      if (window.Tesseract) return Promise.resolve();
+      if (this.loaderP) return this.loaderP;
+      this.loaderP = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = this.TESSERACT_SRC;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => { this.loaderP = null; reject({ custom: "Could not load the OCR engine (needs an internet connection)." }); };
+        document.head.appendChild(s);
+      });
+      return this.loaderP;
+    },
+
+    open() {
+      this.rows = [];
+      this._show(1);
+      $("ocrCreate").style.display = "none";
+      $("ocrAnother").style.display = "none";
+      $("ocrRaw").style.display = "none";
+      $("ocrRaw").value = "";
+      $("ocrModal").classList.add("open");
+    },
+    close() { $("ocrModal").classList.remove("open"); if (this.objUrl) { URL.revokeObjectURL(this.objUrl); this.objUrl = null; } },
+
+    _show(step) {
+      $("ocrStep1").style.display = step === 1 ? "block" : "none";
+      $("ocrStep2").style.display = step === 2 ? "block" : "none";
+      $("ocrStep3").style.display = step === 3 ? "block" : "none";
+    },
+
+    async handleFile(file) {
+      if (!file || !/^image\//.test(file.type)) { toast("⚠ Please choose an image file"); return; }
+      if (this.objUrl) URL.revokeObjectURL(this.objUrl);
+      this.objUrl = URL.createObjectURL(file);
+      $("ocrThumb").src = this.objUrl;
+      $("ocrStatus").textContent = "Loading OCR engine…";
+      $("ocrBar").style.width = "5%";
+      $("ocrAnother").style.display = "none";
+      $("ocrCreate").style.display = "none";
+      this._show(2);
+      try {
+        await this.load();
+        $("ocrStatus").textContent = "Reading text from image…";
+        const { data } = await Tesseract.recognize(file, "eng", {
+          logger: m => {
+            if (m.status === "recognizing text") { $("ocrBar").style.width = Math.round(m.progress * 100) + "%"; }
+            else if (m.status) { $("ocrStatus").textContent = m.status.charAt(0).toUpperCase() + m.status.slice(1) + "…"; }
+          }
+        });
+        const text = (data && data.text) ? data.text : "";
+        this.buildReview(text);
+      } catch (e) {
+        this._show(1);
+        toast("⚠ " + (e && e.custom ? e.custom : "OCR failed. Try a clearer image or host the app over http(s)."));
+      }
+    },
+
+    parse(text) {
+      const rawLines = text.split(/\r?\n/).map(l => l.trim());
+      const bulletRe = /^\s*([0-9]{1,2}[.)]|[-*•●○▪◦·–])\s+/;
+      const listLines = rawLines.filter(l => bulletRe.test(l));
+      const source = listLines.length >= 2 ? listLines : rawLines;
+      const out = [];
+      for (let line of source) {
+        let c = line
+          .replace(/^\s*([0-9]{1,2}[.)]|[a-z][.)]|[ivxlcdm]+[.)]|[-*•●○▪◦·–])\s+/i, "")
+          .replace(/^\s*(\[[ xX]?\]|☐|☑|✅|✓|□|▢)\s*/, "")
+          .trim();
+        // drop obvious non-tasks: too short, pure punctuation, or common email chrome
+        if (c.length < 3) continue;
+        if (/^(from|to|cc|bcc|subject|sent|date|re|fwd)\s*:/i.test(c)) continue;
+        if (/^(hi|hello|hey|dear|thanks|thank you|regards|best|cheers|sincerely)\b/i.test(c) && c.length < 24) continue;
+        out.push(c);
+      }
+      return out;
+    },
+
+    guessPriority(text) {
+      const lc = text.toLowerCase();
+      if (/(urgent|asap|immediately|critical|important|high[\s-]?priority|!!!|top priority)/.test(lc)) return "high";
+      if (/(low[\s-]?priority|whenever|someday|no rush|optional|nice to have)/.test(lc)) return "low";
+      return "med";
+    },
+
+    guessCat(text) {
+      const lc = text.toLowerCase();
+      // 1) explicit mention of an existing notebook name
+      for (const c of state.categories) {
+        if (c.name && lc.includes(c.name.toLowerCase())) return c.id;
+      }
+      // 2) keyword scoring for office/personal
+      let office = 0, personal = 0;
+      this.DICT.office.forEach(w => { if (lc.includes(w)) office++; });
+      this.DICT.personal.forEach(w => { if (lc.includes(w)) personal++; });
+      let hint = null;
+      if (office || personal) hint = office >= personal ? "office" : "personal";
+      if (hint) {
+        const found = state.categories.find(c => c.id === hint || (c.name && c.name.toLowerCase() === hint));
+        if (found) return found.id;
+      }
+      // 3) fall back to the current notebook, else the first one
+      if (activeCat !== "all") return activeCat;
+      return state.categories[0] ? state.categories[0].id : null;
+    },
+
+    buildReview(text) {
+      $("ocrRaw").value = text;
+      const titles = this.parse(text);
+      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), include: true, auto: true }));
+      this.renderRows();
+      $("ocrAssignAll").innerHTML = '<option value="">— keep auto —</option>' + catOptions(null);
+      $("ocrAssignAll").value = "";
+      this._show(3);
+      $("ocrAnother").style.display = "inline-block";
+      $("ocrCreate").style.display = "inline-block";
+    },
+
+    reparse() {
+      const titles = this.parse($("ocrRaw").value);
+      this.rows = titles.map(t => ({ text: t, priority: this.guessPriority(t), catId: this.guessCat(t), include: true, auto: true }));
+      this.renderRows();
+    },
+
+    renderRows() {
+      const list = $("ocrRows");
+      const n = this.rows.filter(r => r.include).length;
+      $("ocrCount").textContent = n + (n === 1 ? " task" : " tasks") + " ready";
+      $("ocrCreate").textContent = n ? "Add " + n + (n === 1 ? " task" : " tasks") : "Add tasks";
+      $("ocrCreate").disabled = !n;
+      if (!this.rows.length) { list.innerHTML = '<div class="ocr-empty">No task lines detected. Try “Edit raw text”, or use a clearer screenshot.</div>'; return; }
+      list.innerHTML = "";
+      this.rows.forEach((r, i) => {
+        const li = document.createElement("li");
+        li.className = "ocr-row" + (r.include ? "" : " excluded");
+        li.innerHTML = `
+          <div class="check ocr-check ${r.include ? "checked" : ""}" data-i="${i}" title="Include / exclude"></div>
+          <input class="ocr-title" data-i="${i}" value="${esc(r.text)}" />
+          ${r.auto ? '<span class="ocr-auto" title="Auto-detected">auto</span>' : ""}
+          <select class="ocr-prio" data-i="${i}">
+            <option value="high" ${r.priority==="high"?"selected":""}>🔴</option>
+            <option value="med" ${r.priority==="med"?"selected":""}>🟡</option>
+            <option value="low" ${r.priority==="low"?"selected":""}>🟢</option>
+          </select>
+          <select class="ocr-cat" data-i="${i}">${catOptions(r.catId)}</select>`;
+        li.querySelector(".ocr-check").onclick = () => { this.rows[i].include = !this.rows[i].include; this.renderRows(); };
+        li.querySelector(".ocr-title").oninput = (e) => { this.rows[i].text = e.target.value; };
+        li.querySelector(".ocr-prio").onchange = (e) => { this.rows[i].priority = e.target.value; };
+        li.querySelector(".ocr-cat").onchange = (e) => { this.rows[i].catId = e.target.value; this.rows[i].auto = false; };
+        list.appendChild(li);
+      });
+    },
+
+    create() {
+      const chosen = this.rows.filter(r => r.include && r.text.trim());
+      if (!chosen.length) { toast("Nothing to add"); return; }
+      if (!state.categories.length) { toast("Create a notebook first"); return; }
+      let count = 0;
+      chosen.forEach(r => {
+        const catId = r.catId || (state.categories[0] && state.categories[0].id);
+        if (!catId) return;
+        state.tasks.push(createTaskObj({ categoryId: catId, title: r.text.trim(), priority: r.priority }));
+        count++;
+      });
+      save(); render();
+      this.close();
+      toast("✨ Added " + count + (count === 1 ? " task" : " tasks") + " from screenshot");
+    }
+  };
+
+  function catOptions(selectedId) {
+    return state.categories.map(c => `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${esc(c.name)}</option>`).join("");
+  }
+
+  // OCR wiring
+  $("scanBtn").onclick = () => OCR.open();
+  const ocrModal = $("ocrModal");
+  $("ocrCancel").onclick = () => OCR.close();
+  $("ocrAnother").onclick = () => OCR.open();
+  ocrModal.onclick = (e) => { if (e.target === ocrModal) OCR.close(); };
+  $("ocrFile").addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) OCR.handleFile(f); });
+  const dz = $("dropZone");
+  dz.onclick = () => $("ocrFile").click();
+  dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("over"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("over"));
+  dz.addEventListener("drop", (e) => {
+    e.preventDefault(); dz.classList.remove("over");
+    const f = e.dataTransfer.files[0]; if (f) OCR.handleFile(f);
+  });
+  $("ocrToggleRaw").onclick = () => {
+    const ta = $("ocrRaw");
+    ta.style.display = ta.style.display === "none" ? "block" : "none";
+  };
+  $("ocrReparse").onclick = () => OCR.reparse();
+  $("ocrAssignAll").onchange = (e) => {
+    const v = e.target.value; if (!v) return;
+    OCR.rows.forEach(r => { r.catId = v; r.auto = false; });
+    OCR.renderRows();
+  };
+  $("ocrCreate").onclick = () => OCR.create();
+  // paste an image directly while the modal is open
+  document.addEventListener("paste", (e) => {
+    if (!ocrModal.classList.contains("open")) return;
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    for (const it of items) {
+      if (it.type && it.type.indexOf("image") === 0) { const f = it.getAsFile(); if (f) { OCR.handleFile(f); e.preventDefault(); } break; }
+    }
+  });
 
   // ---------- Render ----------
   function render() {

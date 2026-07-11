@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskNest — Professional To-Do</title>
+<!-- Google APIs (loaded only when online / served over http(s); app works without them) -->
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg: #f4f6fb;
@@ -377,9 +380,70 @@
   }
   .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
+  /* ---------- Google push cluster ---------- */
+  .gpush { display: flex; gap: 8px; margin-top: 11px; flex-wrap: wrap; }
+  .gbtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 650; padding: 6px 11px 6px 8px;
+    border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-soft);
+    cursor: pointer; font-family: var(--font); transition: all .15s; position: relative;
+  }
+  .gbtn:hover { border-color: var(--accent); color: var(--text); box-shadow: var(--shadow); }
+  .gbtn .gi { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; flex-shrink: 0; }
+  .gbtn.cal .gi { background: #e8f0fe; }
+  .gbtn.tasks .gi { background: #e6f4ea; }
+  html[data-theme="dark"] .gbtn.cal .gi { background: #1b2942; }
+  html[data-theme="dark"] .gbtn.tasks .gi { background: #14321f; }
+  .gbtn .gi svg { width: 13px; height: 13px; display: block; }
+  .gdot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint);
+    opacity: .5; transition: all .2s; flex-shrink: 0;
+  }
+  .gbtn.synced { border-color: #34a853; color: #1e7e34; background: #eafaf0; }
+  html[data-theme="dark"] .gbtn.synced { background: #12351f; color: #7ee0a2; border-color: #2f7a49; }
+  .gbtn.synced .gdot { background: #34a853; opacity: 1; box-shadow: 0 0 0 3px rgba(52,168,83,.18); }
+  .gbtn.syncing { pointer-events: none; opacity: .7; }
+  .gbtn.syncing .gdot { background: var(--med); opacity: 1; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .4; } }
+
+  /* connection pill in topbar */
+  .conn-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-soft); cursor: pointer; font-family: var(--font);
+    font-size: 13px; font-weight: 650; transition: all .15s; white-space: nowrap;
+  }
+  .conn-btn:hover { border-color: var(--accent); color: var(--text); }
+  .conn-btn .cdot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); }
+  .conn-btn.on { border-color: #34a853; color: #1e7e34; background: #eafaf0; }
+  html[data-theme="dark"] .conn-btn.on { background: #12351f; color: #7ee0a2; border-color: #2f7a49; }
+  .conn-btn.on .cdot { background: #34a853; box-shadow: 0 0 0 3px rgba(52,168,83,.18); }
+  .conn-btn .label-full { display: inline; }
+
+  /* settings modal specifics */
+  .modal.wide { max-width: 460px; }
+  .g-status { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); margin-bottom: 16px; font-size: 13px; font-weight: 600; }
+  .g-status .sdot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-faint); }
+  .g-status.on .sdot { background: #34a853; box-shadow: 0 0 0 3px rgba(52,168,83,.18); }
+  .g-help { font-size: 12px; color: var(--text-soft); line-height: 1.55; background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+  .g-help ol { margin: 8px 0 0 18px; display: flex; flex-direction: column; gap: 5px; }
+  .g-help code { background: var(--surface); padding: 1px 5px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border); word-break: break-all; }
+  .g-help a { color: var(--accent); }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; font-size: 13.5px; font-weight: 600; }
+  .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .track { position: absolute; inset: 0; background: var(--border); border-radius: 20px; transition: .2s; cursor: pointer; }
+  .switch .track::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::before { transform: translateX(18px); }
+
   .menu-toggle { display: none; }
 
   @media (max-width: 720px) {
+    .conn-btn .label-full { display: none; }
+    .conn-btn { padding: 0 12px; }
     .sidebar {
       position: fixed; z-index: 40; height: 100%; transform: translateX(-100%);
       transition: transform .28s ease; box-shadow: var(--shadow-lg);
@@ -435,6 +499,9 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="searchInput" placeholder="Search tasks, notes, #tags…" />
       </div>
+      <button class="conn-btn" id="connBtn" title="Connect Google Tasks & Calendar">
+        <span class="cdot"></span><span class="label-full" id="connLabel">Connect Google</span>
+      </button>
       <button class="icon-btn" id="themeToggle" title="Toggle dark mode">🌙</button>
     </div>
 
@@ -518,6 +585,41 @@
     </div>
   </div>
 
+  <!-- Google settings modal -->
+  <div class="modal-back" id="gModal">
+    <div class="modal wide">
+      <h3>Google Sync — Tasks &amp; Calendar</h3>
+      <div class="g-status" id="gStatus"><span class="sdot"></span><span id="gStatusText">Not connected</span></div>
+
+      <label>Your Google OAuth Client ID</label>
+      <input type="text" id="gClientId" placeholder="xxxxxxxx.apps.googleusercontent.com" />
+
+      <div class="toggle-row">
+        <span>Auto-sync changes (edit / complete / delete)</span>
+        <label class="switch"><input type="checkbox" id="gAutoSync" checked /><span class="track"></span></label>
+      </div>
+
+      <div class="g-help">
+        <strong>One-time setup (free):</strong>
+        <ol>
+          <li>Open the <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> and create a project.</li>
+          <li>Enable the <b>Google Tasks API</b> and <b>Google Calendar API</b>.</li>
+          <li>Configure the OAuth consent screen (External) and add yourself as a test user.</li>
+          <li>Create an <b>OAuth client ID</b> → type <b>Web application</b>.</li>
+          <li>Under <b>Authorized JavaScript origins</b> add this page's origin: <code id="gOrigin"></code></li>
+          <li>Copy the Client ID above and click <b>Save &amp; Connect</b>.</li>
+        </ol>
+        <p style="margin-top:8px" id="gOriginNote"></p>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" id="gDisconnect">Disconnect</button>
+        <button class="btn-ghost" id="gCancel">Close</button>
+        <button class="btn-primary" id="gConnect">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -530,6 +632,8 @@
   const PRIO_RANK = { high: 0, med: 1, low: 2 };
   const PRIO_LABEL = { high: "High", med: "Medium", low: "Low" };
   const RECUR_LABEL = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
+  const CAL_ICON = '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M7 2v2H5.5A2.5 2.5 0 0 0 3 6.5v13A2.5 2.5 0 0 0 5.5 22h13a2.5 2.5 0 0 0 2.5-2.5v-13A2.5 2.5 0 0 0 18.5 4H17V2h-2v2H9V2H7zm12 7.5V19a.5.5 0 0 1-.5.5h-13A.5.5 0 0 1 5 19V9.5h14z"/><path fill="#34A853" d="M11 12h2v2h-2zM14.5 12h2v2h-2zM7.5 15h2v2h-2zM11 15h2v2h-2z"/></svg>';
+  const TASKS_ICON = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1A73E8"/><path fill="#fff" d="M10.4 16.2l-3.3-3.3 1.4-1.4 1.9 1.9 4.7-4.7 1.4 1.4z"/></svg>';
 
   // ---------- State ----------
   let state = load();
@@ -550,7 +654,8 @@
       ],
       tasks: [],
       theme: "light",
-      sortMode: "smart"
+      sortMode: "smart",
+      google: { clientId: "", autoSync: true }
     };
   }
 
@@ -569,7 +674,11 @@
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       tags: Array.isArray(t.tags) ? t.tags : [],
       order: typeof t.order === "number" ? t.order : (t.createdAt || Date.now()) + i,
-      _spawned: !!t._spawned
+      _spawned: !!t._spawned,
+      google: t.google && typeof t.google === "object"
+        ? { taskId: t.google.taskId || null, taskListId: t.google.taskListId || null,
+            eventId: t.google.eventId || null, childMap: t.google.childMap || {} }
+        : { taskId: null, taskListId: null, eventId: null, childMap: {} }
     };
   }
 
@@ -581,6 +690,9 @@
       if (!data.categories || !data.tasks) return seed();
       data.theme = data.theme || "light";
       data.sortMode = data.sortMode || "smart";
+      data.google = data.google && typeof data.google === "object"
+        ? { clientId: data.google.clientId || "", autoSync: data.google.autoSync !== false }
+        : { clientId: "", autoSync: true };
       data.tasks = data.tasks.map(normalizeTask);
       return data;
     } catch (e) { return seed(); }
@@ -669,7 +781,8 @@
       subtasks: [],
       tags,
       order: minOrder() - 1,
-      _spawned: false
+      _spawned: false,
+      google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
     });
     $("taskTitle").value = ""; $("taskNotes").value = ""; $("taskTags").value = "";
     $("taskDeadline").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
@@ -712,15 +825,19 @@
         subtasks: t.subtasks.map(s => ({ id: uid(), text: s.text, done: false })),
         tags: t.tags.slice(),
         order: minOrder() - 1,
-        _spawned: false
+        _spawned: false,
+        google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
       });
       toast("🔁 Next occurrence scheduled");
     }
     save(); render();
+    Google.autoSync(t);
   }
 
   function deleteTask(id) {
-    state.tasks = state.tasks.filter(t => t.id !== id);
+    const t = state.tasks.find(x => x.id === id);
+    if (t) Google.remoteDelete(t);
+    state.tasks = state.tasks.filter(x => x.id !== id);
     expanded.delete(id);
     save(); render(); toast("Task deleted");
   }
@@ -730,6 +847,7 @@
     if (!t) return;
     Object.assign(t, patch);
     save();
+    Google.autoSync(t);
   }
 
   // ---------- Subtasks ----------
@@ -739,17 +857,20 @@
     t.subtasks.push({ id: uid(), text, done: false });
     focusSubFor = taskId;
     save(); render();
+    Google.autoSync(t);
   }
   function toggleSub(taskId, subId) {
     const t = state.tasks.find(x => x.id === taskId); if (!t) return;
     const s = t.subtasks.find(x => x.id === subId); if (!s) return;
     s.done = !s.done;
     save(); render();
+    Google.autoSync(t);
   }
   function deleteSub(taskId, subId) {
     const t = state.tasks.find(x => x.id === taskId); if (!t) return;
     t.subtasks = t.subtasks.filter(x => x.id !== subId);
     save(); render();
+    Google.autoSync(t);
   }
 
   // ---------- Sorting / filtering ----------
@@ -882,6 +1003,269 @@
     toast(count + " event(s) exported 📆");
   };
 
+  // ---------- Google Tasks + Calendar (real API sync) ----------
+  const Google = {
+    SCOPES: "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar.events",
+    DISCOVERY: [
+      "https://tasks.googleapis.com/$discovery/rest?version=v1",
+      "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
+    ],
+    clientId: "",
+    tokenClient: null,
+    accessToken: null,
+    tokenExpiry: 0,
+    gapiReady: false,
+    gisReady: false,
+    connected: false,
+    taskListId: null,
+    _timers: {},
+
+    init() {
+      this.clientId = (state.google && state.google.clientId) || "";
+      this._waitGapi();
+      this._waitGis();
+      this.updateConnUI();
+    },
+    _waitGapi() {
+      const tryInit = () => {
+        if (window.gapi && window.gapi.load) {
+          gapi.load("client", async () => {
+            try { await gapi.client.init({ discoveryDocs: this.DISCOVERY }); this.gapiReady = true; this.updateConnUI(); }
+            catch (e) { /* offline / blocked */ }
+          });
+        } else { setTimeout(tryInit, 400); }
+      };
+      tryInit();
+    },
+    _waitGis() {
+      const tryGis = () => {
+        if (window.google && google.accounts && google.accounts.oauth2) { this.gisReady = true; this.updateConnUI(); }
+        else { setTimeout(tryGis, 400); }
+      };
+      tryGis();
+    },
+
+    available() { return this.gapiReady && this.gisReady; },
+
+    connect(interactive) {
+      return new Promise((resolve, reject) => {
+        if (!this.clientId) { reject({ custom: "Enter your Google OAuth Client ID first" }); return; }
+        if (!this.gisReady) { reject({ custom: "Google sign-in library not loaded. Serve this page over http(s) with internet access." }); return; }
+        if (!this.gapiReady) { reject({ custom: "Google API library not ready yet — try again in a moment." }); return; }
+        try {
+          this.tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: this.clientId,
+            scope: this.SCOPES,
+            callback: (resp) => {
+              if (resp && resp.error) { reject(resp); return; }
+              this.accessToken = resp.access_token;
+              this.tokenExpiry = Date.now() + ((resp.expires_in ? resp.expires_in * 1000 : 3300000) - 60000);
+              gapi.client.setToken({ access_token: resp.access_token });
+              this.connected = true;
+              resolve(resp);
+            }
+          });
+          this.tokenClient.requestAccessToken({ prompt: interactive ? "consent" : "" });
+        } catch (e) { reject(e); }
+      });
+    },
+    async ensureToken() {
+      if (this.connected && this.accessToken && Date.now() < this.tokenExpiry) return;
+      await this.connect(false);
+    },
+    async afterConnect() {
+      this.updateConnUI();
+      try { await this.ensureTaskList(); } catch (e) {}
+      render();
+    },
+    disconnect() {
+      if (this.accessToken && window.google && google.accounts && google.accounts.oauth2) {
+        try { google.accounts.oauth2.revoke(this.accessToken, () => {}); } catch (e) {}
+      }
+      this.accessToken = null; this.connected = false; this.tokenExpiry = 0; this.taskListId = null;
+      if (window.gapi && gapi.client) gapi.client.setToken(null);
+      this.updateConnUI(); render(); toast("Disconnected from Google");
+    },
+
+    async ensureTaskList() {
+      if (this.taskListId) return this.taskListId;
+      const res = await gapi.client.tasks.tasklists.list({ maxResults: 100 });
+      const items = (res.result && res.result.items) || [];
+      let list = items.find(l => l.title === "TaskNest");
+      if (!list) { const ins = await gapi.client.tasks.tasklists.insert({ resource: { title: "TaskNest" } }); list = ins.result; }
+      this.taskListId = list.id;
+      return list.id;
+    },
+
+    composeNotes(t) {
+      const cat = state.categories.find(c => c.id === t.categoryId);
+      let n = t.notes ? t.notes + "\n\n" : "";
+      n += "Priority: " + PRIO_LABEL[t.priority];
+      if (cat) n += "\nNotebook: " + cat.name;
+      if (t.tags.length) n += "\nTags: " + t.tags.join(", ");
+      if (t.recur !== "none") n += "\nRepeat: " + RECUR_LABEL[t.recur];
+      n += "\n\n— via TaskNest";
+      return n;
+    },
+
+    async upsertTask(t) {
+      await this.ensureToken();
+      const listId = await this.ensureTaskList();
+      const resource = {
+        title: t.title || "(untitled)",
+        notes: this.composeNotes(t),
+        status: t.completed ? "completed" : "needsAction"
+      };
+      if (t.deadline) resource.due = new Date(t.deadline).toISOString();
+      let res;
+      if (t.google.taskId) {
+        res = await gapi.client.tasks.tasks.patch({ tasklist: t.google.taskListId || listId, task: t.google.taskId, resource });
+      } else {
+        res = await gapi.client.tasks.tasks.insert({ tasklist: listId, resource });
+        t.google.taskId = res.result.id; t.google.taskListId = listId;
+      }
+      const parentList = t.google.taskListId || listId;
+      const childMap = t.google.childMap || {};
+      for (const s of t.subtasks) {
+        const cRes = { title: s.text || "(item)", status: s.done ? "completed" : "needsAction" };
+        if (childMap[s.id]) {
+          try { await gapi.client.tasks.tasks.patch({ tasklist: parentList, task: childMap[s.id], resource: cRes }); }
+          catch (e) { if (e && e.status === 404) delete childMap[s.id]; }
+        }
+        if (!childMap[s.id]) {
+          const ci = await gapi.client.tasks.tasks.insert({ tasklist: parentList, parent: t.google.taskId, resource: cRes });
+          childMap[s.id] = ci.result.id;
+        }
+      }
+      const live = new Set(t.subtasks.map(s => s.id));
+      for (const sid of Object.keys(childMap)) {
+        if (!live.has(sid)) { try { await gapi.client.tasks.tasks.delete({ tasklist: parentList, task: childMap[sid] }); } catch (e) {} delete childMap[sid]; }
+      }
+      t.google.childMap = childMap;
+      save();
+      return res;
+    },
+
+    async upsertEvent(t) {
+      if (!t.deadline) throw { custom: "Set a deadline to sync with Google Calendar" };
+      await this.ensureToken();
+      const start = new Date(t.deadline), end = new Date(start.getTime() + 3600000);
+      const resource = {
+        summary: t.title,
+        description: this.composeNotes(t),
+        start: { dateTime: start.toISOString() },
+        end: { dateTime: end.toISOString() }
+      };
+      const rr = { daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY" }[t.recur];
+      if (rr) resource.recurrence = ["RRULE:FREQ=" + rr];
+      let res;
+      if (t.google.eventId) res = await gapi.client.calendar.events.patch({ calendarId: "primary", eventId: t.google.eventId, resource });
+      else { res = await gapi.client.calendar.events.insert({ calendarId: "primary", resource }); t.google.eventId = res.result.id; }
+      save();
+      return res;
+    },
+
+    // user clicked the Calendar button
+    async pushCalendar(t) {
+      if (this.connected) {
+        const existed = !!t.google.eventId;
+        try { await this.upsertEvent(t); toast(existed ? "Updated in Google Calendar ✓" : "Added to Google Calendar ✓"); }
+        catch (e) { toast("⚠ " + this.errMsg(e)); }
+        render();
+      } else {
+        pushToGCal(t); // zero-setup fallback: opens a pre-filled event
+      }
+    },
+
+    // user clicked the Tasks button
+    async pushTasks(t) {
+      if (!this.connected) {
+        if (!this.clientId) { toast("Connect Google first"); openGModal(); render(); return; }
+        try { await this.connect(true); await this.afterConnect(); }
+        catch (e) { toast("⚠ " + this.errMsg(e)); render(); return; }
+      }
+      const existed = !!t.google.taskId;
+      try { await this.upsertTask(t); toast(existed ? "Updated in Google Tasks ✓" : "Added to Google Tasks ✓"); }
+      catch (e) { toast("⚠ " + this.errMsg(e)); }
+      render();
+    },
+
+    autoSync(t) {
+      if (!this.connected || !(state.google && state.google.autoSync)) return;
+      if (!t.google.taskId && !t.google.eventId) return; // only already-linked tasks
+      clearTimeout(this._timers[t.id]);
+      this._timers[t.id] = setTimeout(() => this._syncNow(t), 700);
+    },
+    async _syncNow(t) {
+      try {
+        if (t.google.taskId) await this.upsertTask(t);
+        if (t.google.eventId) await this.upsertEvent(t);
+        render();
+      } catch (e) { toast("⚠ Sync failed: " + this.errMsg(e)); }
+    },
+    remoteDelete(t) {
+      if (!this.connected || !(state.google && state.google.autoSync)) return;
+      (async () => {
+        try {
+          await this.ensureToken();
+          if (t.google.taskId) await gapi.client.tasks.tasks.delete({ tasklist: t.google.taskListId || this.taskListId, task: t.google.taskId });
+          if (t.google.eventId) await gapi.client.calendar.events.delete({ calendarId: "primary", eventId: t.google.eventId });
+        } catch (e) {}
+      })();
+    },
+
+    errMsg(e) {
+      if (!e) return "Something went wrong";
+      if (e.custom) return e.custom;
+      if (e.result && e.result.error && e.result.error.message) return e.result.error.message;
+      if (e.error) return typeof e.error === "string" ? e.error : (e.error.message || "authorization error");
+      if (typeof e === "string") return e;
+      return e.message || "Something went wrong";
+    },
+
+    updateConnUI() {
+      const on = this.connected;
+      const b = $("connBtn");
+      if (b) { b.classList.toggle("on", on); }
+      const lbl = $("connLabel"); if (lbl) lbl.textContent = on ? "Google connected" : "Connect Google";
+      const st = $("gStatus"); if (st) st.classList.toggle("on", on);
+      const stx = $("gStatusText");
+      if (stx) stx.textContent = on
+        ? "Connected — syncing Tasks & Calendar"
+        : (this.gisReady ? "Not connected" : "Google library not loaded (needs internet + http/https origin)");
+    }
+  };
+
+  // ---------- Google settings modal ----------
+  const gModal = $("gModal");
+  function openGModal() {
+    $("gClientId").value = (state.google && state.google.clientId) || "";
+    $("gAutoSync").checked = !(state.google && state.google.autoSync === false);
+    const origin = location.origin && location.origin !== "null" ? location.origin : "(this file is opened directly — host it on http/https for Google sign-in)";
+    $("gOrigin").textContent = origin;
+    $("gOriginNote").textContent = location.protocol === "file:"
+      ? "You are opening the file directly (file://). Google sign-in needs an http/https origin — host it on GitHub Pages or run a local server (e.g. python -m http.server), then reopen from that URL."
+      : "Tip: use exactly this origin (no trailing slash) in the Cloud Console.";
+    Google.updateConnUI();
+    gModal.classList.add("open");
+  }
+  $("connBtn").onclick = openGModal;
+  $("gCancel").onclick = () => gModal.classList.remove("open");
+  gModal.onclick = (e) => { if (e.target === gModal) gModal.classList.remove("open"); };
+  $("gAutoSync").onchange = (e) => { state.google.autoSync = e.target.checked; save(); };
+  $("gDisconnect").onclick = () => Google.disconnect();
+  $("gConnect").onclick = async () => {
+    const id = $("gClientId").value.trim();
+    if (!id) { toast("Enter your OAuth Client ID"); return; }
+    state.google.clientId = id; Google.clientId = id; save();
+    try {
+      await Google.connect(true);
+      await Google.afterConnect();
+      toast("Connected to Google ✓");
+      gModal.classList.remove("open");
+    } catch (e) { toast("⚠ " + Google.errMsg(e)); }
+  };
+
   // ---------- Render ----------
   function render() {
     document.body.classList.toggle("manual-sort", state.sortMode === "manual");
@@ -956,11 +1340,18 @@
             ${tagsHtml}
           </div>
           ${subTotal ? `<div class="sub-mini"><div class="track"><div class="fill" style="width:${subPct}%"></div></div><span class="lbl">${subPct}%</span></div>` : ""}
+          <div class="gpush">
+            <button class="gbtn cal ${t.google.eventId ? "synced" : ""}" data-gcal title="${t.google.eventId ? "Synced to Google Calendar — click to update" : "Push to Google Calendar"}">
+              <span class="gi">${CAL_ICON}</span> Calendar <span class="gdot"></span>
+            </button>
+            <button class="gbtn tasks ${t.google.taskId ? "synced" : ""}" data-gtasks title="${t.google.taskId ? "Synced to Google Tasks — click to update" : "Push to Google Tasks"}">
+              <span class="gi">${TASKS_ICON}</span> Tasks <span class="gdot"></span>
+            </button>
+          </div>
         </div>
         <div class="task-actions">
           <button class="act expand ${isOpen ? "open" : ""}" title="Details & checklist">⌄</button>
-          <button class="act gcal" title="Add to Google Calendar">📅</button>
-          <button class="act ics" title="Download .ics">📆</button>
+          <button class="act ics" title="Download .ics calendar file">📆</button>
           <button class="act del" title="Delete task">🗑</button>
         </div>
       </div>
@@ -1012,7 +1403,10 @@
 
     // events
     li.querySelector(".check").onclick = () => toggleDone(t.id);
-    li.querySelector(".gcal").onclick = () => pushToGCal(t);
+    const calBtn = li.querySelector("[data-gcal]");
+    const tasksBtn = li.querySelector("[data-gtasks]");
+    calBtn.onclick = () => { if (Google.connected) calBtn.classList.add("syncing"); Google.pushCalendar(t); };
+    tasksBtn.onclick = () => { if (Google.connected) tasksBtn.classList.add("syncing"); Google.pushTasks(t); };
     li.querySelector(".ics").onclick = () => exportTaskICS(t);
     li.querySelector(".del").onclick = () => deleteTask(t.id);
     li.querySelector(".expand").onclick = () => {
@@ -1189,6 +1583,7 @@
 
   // ---------- Init ----------
   applyTheme();
+  Google.init();
   render();
 })();
 </script>

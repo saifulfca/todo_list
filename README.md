@@ -32,9 +32,34 @@ That's it. All your data is saved automatically in the browser's local storage o
 - **Manual order** — drag and drop tasks into any order you like.
 - Filters: **All / Active / Completed / High priority / Due soon**.
 
-### Calendar integration
-- **📅 Add to Google Calendar** — opens a pre-filled event (title, notes, priority, deadline, recurrence). No API keys or setup required.
-- **📆 Export .ics** — download a standard calendar file for a single task or for every scheduled task in a notebook (works with Apple Calendar, Outlook, etc.).
+### Google Tasks &amp; Google Calendar sync
+Each task has **two separate, branded push buttons** with a live status dot (grey = not pushed, green = synced):
+
+- **Calendar** — pushes the task to **Google Calendar** as an event (with recurrence).
+- **Tasks** — pushes the task to **Google Tasks**, including its checklist items as **subtasks**.
+
+When you **connect Google** (see setup below), pushing creates the real item and links it. After that, **any change you make in the app — edit, complete, add/tick checklist items, or delete — syncs automatically** to Google Tasks/Calendar.
+
+**No-setup fallbacks** (work straight from a local file, no account connection):
+- The **Calendar** button opens a pre-filled Google Calendar event.
+- **📆 Export .ics** downloads a standard calendar file for a task or a whole notebook (works with Apple Calendar, Outlook, etc.).
+
+## Connecting Google (one-time, free)
+
+Real Google **Tasks** sync requires the Google API, which needs OAuth. Because Google sign-in does **not** work from `file://`, host the app on an `http(s)` origin first (GitHub Pages or a local server), then:
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) and create a project.
+2. Enable the **Google Tasks API** and **Google Calendar API**.
+3. Configure the **OAuth consent screen** (External) and add your Google account as a **test user**.
+4. Create an **OAuth client ID** → application type **Web application**.
+5. Under **Authorized JavaScript origins**, add the exact origin where the app is served, e.g.
+   - `https://YOUR-USERNAME.github.io` (GitHub Pages), or
+   - `http://localhost:8000` (local server).
+6. In the app, click **Connect Google**, paste the **Client ID**, and hit **Save & Connect**.
+
+### Hosting options
+- **GitHub Pages:** In the repo, go to **Settings → Pages → Build and deployment → Source: Deploy from a branch**, pick `main` / `/ (root)`, save. Your app will be live at `https://YOUR-USERNAME.github.io/todo_list/`.
+- **Local server:** from the project folder run `python -m http.server 8000`, then open `http://localhost:8000`.
 
 ### Data & appearance
 - **Auto-save** to browser local storage.
@@ -44,8 +69,8 @@ That's it. All your data is saved automatically in the browser's local storage o
 
 ## Privacy
 
-Everything runs locally in your browser. No data ever leaves your device (except when you explicitly open Google Calendar or export a file).
+Everything runs locally in your browser. Your tasks are stored only in your browser's local storage. Data leaves your device only when you explicitly push to Google (Tasks/Calendar), open a pre-filled calendar event, or export a file. Your Google OAuth Client ID is stored locally and used only to talk to Google's APIs directly from your browser.
 
 ## Tech
 
-Plain HTML, CSS, and vanilla JavaScript in one self-contained file — no frameworks, no network calls.
+Plain HTML, CSS, and vanilla JavaScript in one self-contained file — no build step and no backend. Optional Google sync uses Google's official client libraries (loaded only when online) with the Tasks and Calendar APIs.

@@ -6,10 +6,18 @@ A polished, single-file to-do app that runs **entirely offline in your browser**
 
 ## Getting started
 
+**Use it online (recommended):** once GitHub Pages finishes its first deploy, the app is live at
+**https://saifulfca.github.io/todo_list/** — this is required for Google sign-in, reminders, and installing it as an app.
+
+**Or run it locally:**
 1. Download or clone this repo.
 2. Double-click **`index.html`** (or open it in any modern browser).
 
 That's it. All your data is saved automatically in the browser's local storage on your machine.
+
+## Install it as an app (PWA)
+
+Open the live URL and either use the **⬇️ Install app** button in the sidebar, or your browser's **Install / Add to Home Screen** option. TaskNest then runs in its own window, has an app icon, and **works offline** thanks to a service worker that caches the app shell.
 
 ## Features
 
@@ -52,6 +60,14 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 - **Manual order** — drag and drop tasks into any order you like.
 - Filters: **All / Active / Completed / High priority / Due soon**.
 - **Clear completed** — tidy a view in one click (with an **Undo**).
+
+### 📊 Insights dashboard
+A dedicated **Insights** view (in the sidebar) with:
+- KPIs — active, completed, overdue, and done-this-week.
+- A **completion-rate ring** and a **7-day completions** bar chart.
+- **Streaks** — your current daily-completion streak and personal best 🔥.
+- Breakdowns **by notebook** and **active by priority**.
+All rendered with pure HTML/CSS — no external chart libraries.
 
 ### 🔔 Reminders & productivity polish
 - **Due reminders** — flip on the bell in the top bar to get a browser notification when a task falls due (opt-in; runs while the app is open).

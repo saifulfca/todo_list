@@ -4,6 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TaskNest — Professional To-Do</title>
+<meta name="description" content="TaskNest — a professional, offline-first to-do app with notebooks, priorities, deadlines, recurring tasks, OCR, Google sync and reminders." />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="TaskNest" />
 <!-- Google APIs (loaded only when online / served over http(s); app works without them) -->
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -518,6 +528,46 @@
   }
   .toast-act:hover { filter: brightness(1.1); }
 
+  /* ---------- Insights dashboard ---------- */
+  .ins-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .ins-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+  .ins-card h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); font-weight: 700; margin-bottom: 14px; }
+  .ins-card.span2 { grid-column: 1 / -1; }
+
+  .kpi-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .kpi { flex: 1; min-width: 130px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .kpi .n { font-size: 28px; font-weight: 750; letter-spacing: -1px; line-height: 1; }
+  .kpi .l { font-size: 12px; color: var(--text-soft); font-weight: 600; margin-top: 6px; }
+
+  .ring-wrap { display: flex; align-items: center; gap: 18px; }
+  .ring { --p: 0; width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0;
+    background: radial-gradient(closest-side, var(--surface) 71%, transparent 72% 100%),
+                conic-gradient(var(--accent) calc(var(--p) * 1%), var(--surface-2) 0); position: relative; }
+  .ring::after { content: attr(data-p); position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; font-weight: 750; }
+  .ring-legend { font-size: 13px; color: var(--text-soft); line-height: 1.7; }
+  .ring-legend b { color: var(--text); }
+
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 130px; padding-top: 6px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .bar-col .bar { width: 100%; max-width: 34px; background: linear-gradient(180deg, var(--accent), #9089fc); border-radius: 6px 6px 3px 3px; min-height: 3px; transition: height .4s ease; position: relative; }
+  .bar-col .bar span { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 700; color: var(--text-soft); }
+  .bar-col .bar.zero { background: var(--surface-2); }
+  .bar-col .cap { font-size: 11px; color: var(--text-faint); font-weight: 600; }
+
+  .breakdown { display: flex; flex-direction: column; gap: 12px; }
+  .bd-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .bd-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .bd-name { width: 96px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .bd-track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 20px; overflow: hidden; }
+  .bd-fill { height: 100%; border-radius: 20px; transition: width .4s ease; }
+  .bd-val { font-size: 12px; color: var(--text-faint); font-weight: 600; width: 66px; text-align: right; flex-shrink: 0; }
+
+  .streak-big { display: flex; align-items: baseline; gap: 10px; }
+  .streak-big .flame { font-size: 34px; }
+  .streak-big .num { font-size: 40px; font-weight: 800; letter-spacing: -2px; }
+  .streak-big .unit { font-size: 14px; color: var(--text-soft); font-weight: 600; }
+  .streak-sub { font-size: 12.5px; color: var(--text-faint); margin-top: 8px; }
+
   /* confetti */
   .confetti {
     position: fixed; top: -14px; width: 9px; height: 15px; z-index: 200;
@@ -575,6 +625,7 @@
       <button id="exportBtn" title="Backup all data to a JSON file">⬇ Backup</button>
       <button id="importBtn" title="Restore from a backup file">⬆ Restore</button>
       <button id="icsBtn" class="wide" title="Export all scheduled tasks as a calendar file">📆 Export calendar (.ics)</button>
+      <button id="installBtn" class="wide" style="display:none" title="Install TaskNest as an app">⬇️ Install app</button>
       <input type="file" id="importFile" accept="application/json" hidden />
     </div>
   </aside>
@@ -665,6 +716,9 @@
           <h3>Nothing here yet</h3>
           <p>Add your first task above to get started.</p>
         </div>
+
+        <!-- Insights dashboard -->
+        <div id="insightsView" style="display:none"></div>
       </div>
     </div>
   </main>
@@ -878,16 +932,17 @@
     const todayCount = state.tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() <= e).length;
     catList.appendChild(specialItem("all", "All Tasks", "#9089fc", allCount));
     catList.appendChild(specialItem("today", "Today", "#ef6c4d", todayCount));
+    catList.appendChild(specialItem("insights", "Insights", "#0ea5e9", null, "📊"));
     state.categories.forEach(c => catList.appendChild(catItem(c, false)));
   }
 
-  function specialItem(id, name, color, count) {
+  function specialItem(id, name, color, count, icon) {
     const li = document.createElement("li");
     li.className = "cat-item" + (activeCat === id ? " active" : "");
     li.innerHTML = `
       <span class="cat-dot" style="background:${color}"></span>
-      <span class="cat-name">${name}</span>
-      <span class="cat-count">${count}</span>`;
+      <span class="cat-name">${icon ? icon + " " : ""}${name}</span>
+      ${count == null ? "" : `<span class="cat-count">${count}</span>`}`;
     li.onclick = () => { activeCat = id; render(); document.body.classList.remove("nav-open"); };
     return li;
   }
@@ -1946,9 +2001,20 @@
     renderCats();
     const catObj = activeCat === "all" ? { name: "All Tasks", color: "#9089fc" }
       : activeCat === "today" ? { name: "Today", color: "#ef6c4d" }
+      : activeCat === "insights" ? { name: "📊 Insights", color: "#0ea5e9" }
       : state.categories.find(c => c.id === activeCat) || { name: "All Tasks", color: "#9089fc" };
     catHeading.textContent = catObj.name;
     catDot.style.background = catObj.color;
+
+    // Insights dashboard replaces the task workflow
+    const isInsights = activeCat === "insights";
+    $("addCard").style.display = isInsights ? "none" : "";
+    document.querySelector(".filter-bar").style.display = isInsights ? "none" : "flex";
+    statsRow.style.display = isInsights ? "none" : "flex";
+    taskList.style.display = isInsights ? "none" : "";
+    emptyState.style.display = "none";
+    $("insightsView").style.display = isInsights ? "block" : "none";
+    if (isInsights) { renderInsights(); return; }
 
     renderStats();
 
@@ -1977,6 +2043,89 @@
       <div class="stat-card" style="flex:1.6">
         <div class="num">${pct}%</div><div class="lbl">${done} of ${total} completed</div>
         <div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div></div>
+      </div>`;
+  }
+
+  function renderInsights() {
+    const tasks = state.tasks;
+    const total = tasks.length;
+    const done = tasks.filter(t => t.completed).length;
+    const active = total - done;
+    const overdue = tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline) < new Date()).length;
+    const rate = total ? Math.round(done / total * 100) : 0;
+
+    if (!total) {
+      $("insightsView").innerHTML = `<div class="empty"><div class="em-icon">📊</div><h3>No data yet</h3><p>Add and complete a few tasks — your stats and streaks will appear here.</p></div>`;
+      return;
+    }
+
+    // last 7 days completions
+    const now = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(0, 0, 0, 0); days.push(d); }
+    const dayCounts = days.map(d => { const s = d.getTime(), e = s + 86400000; return tasks.filter(t => t.completed && t.completedAt && t.completedAt >= s && t.completedAt < e).length; });
+    const maxDay = Math.max(1, ...dayCounts);
+    const weekTotal = dayCounts.reduce((a, b) => a + b, 0);
+    const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    // completion day-set for streaks
+    const compDays = new Set(tasks.filter(t => t.completed && t.completedAt).map(t => { const d = new Date(t.completedAt); d.setHours(0, 0, 0, 0); return d.getTime(); }));
+    let cur = 0; { let d = new Date(); d.setHours(0, 0, 0, 0); if (!compDays.has(d.getTime())) d.setDate(d.getDate() - 1); while (compDays.has(d.getTime())) { cur++; d.setDate(d.getDate() - 1); } }
+    let best = 0; { const sorted = [...compDays].sort((a, b) => a - b); let run = 0, prev = null; for (const t of sorted) { run = (prev != null && t - prev === 86400000) ? run + 1 : 1; best = Math.max(best, run); prev = t; } }
+
+    // by notebook & by priority
+    const byCat = state.categories.map(c => { const ct = tasks.filter(t => t.categoryId === c.id); return { name: c.name, color: c.color, total: ct.length, done: ct.filter(t => t.completed).length }; }).filter(c => c.total > 0);
+    const prio = { high: 0, med: 0, low: 0 }; tasks.filter(t => !t.completed).forEach(t => { prio[t.priority] = (prio[t.priority] || 0) + 1; });
+    const prioMax = Math.max(1, prio.high, prio.med, prio.low);
+    const prioColor = { high: "var(--high)", med: "var(--med)", low: "var(--low)" };
+
+    const barsHtml = days.map((d, i) => {
+      const c = dayCounts[i], h = Math.round(c / maxDay * 100);
+      return `<div class="bar-col"><div class="bar ${c ? "" : "zero"}" style="height:${c ? Math.max(h, 6) : 3}%">${c ? `<span>${c}</span>` : ""}</div><div class="cap">${dow[d.getDay()]}</div></div>`;
+    }).join("");
+
+    const catHtml = byCat.length ? byCat.map(c => {
+      const p = c.total ? Math.round(c.done / c.total * 100) : 0;
+      return `<div class="bd-row"><span class="bd-dot" style="background:${c.color}"></span><span class="bd-name">${esc(c.name)}</span><div class="bd-track"><div class="bd-fill" style="width:${p}%;background:${c.color}"></div></div><span class="bd-val">${c.done}/${c.total}</span></div>`;
+    }).join("") : '<div style="color:var(--text-faint);font-size:13px">No notebooks with tasks.</div>';
+
+    const prioHtml = ["high", "med", "low"].map(k => {
+      const v = prio[k], p = Math.round(v / prioMax * 100);
+      return `<div class="bd-row"><span class="bd-dot" style="background:${prioColor[k]}"></span><span class="bd-name">${PRIO_LABEL[k]}</span><div class="bd-track"><div class="bd-fill" style="width:${p}%;background:${prioColor[k]}"></div></div><span class="bd-val">${v}</span></div>`;
+    }).join("");
+
+    $("insightsView").innerHTML = `
+      <div class="kpi-row">
+        <div class="kpi"><div class="n">${active}</div><div class="l">Active tasks</div></div>
+        <div class="kpi"><div class="n">${done}</div><div class="l">Completed</div></div>
+        <div class="kpi"><div class="n" style="color:var(--overdue)">${overdue}</div><div class="l">Overdue</div></div>
+        <div class="kpi"><div class="n">${weekTotal}</div><div class="l">Done this week</div></div>
+      </div>
+      <div class="ins-grid">
+        <div class="ins-card">
+          <h4>Completion rate</h4>
+          <div class="ring-wrap">
+            <div class="ring" style="--p:${rate}" data-p="${rate}%"></div>
+            <div class="ring-legend"><b>${done}</b> of <b>${total}</b> tasks done<br/><span style="color:var(--text-faint)">${active} still active</span></div>
+          </div>
+        </div>
+        <div class="ins-card">
+          <h4>🔥 Streak</h4>
+          <div class="streak-big"><span class="flame">🔥</span><span class="num">${cur}</span><span class="unit">day${cur === 1 ? "" : "s"} in a row</span></div>
+          <div class="streak-sub">Best streak: <b>${best}</b> day${best === 1 ? "" : "s"} · complete a task today to keep it going</div>
+        </div>
+        <div class="ins-card span2">
+          <h4>Completed — last 7 days</h4>
+          <div class="bars">${barsHtml}</div>
+        </div>
+        <div class="ins-card">
+          <h4>By notebook</h4>
+          <div class="breakdown">${catHtml}</div>
+        </div>
+        <div class="ins-card">
+          <h4>Active by priority</h4>
+          <div class="breakdown">${prioHtml}</div>
+        </div>
       </div>`;
   }
 
@@ -2267,6 +2416,27 @@
     el.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove("show"), actionLabel ? 6000 : 2400);
+  }
+
+  // ---------- PWA: install prompt + service worker ----------
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault(); deferredPrompt = e;
+    const b = $("installBtn"); if (b) b.style.display = "flex";
+  });
+  $("installBtn").onclick = async () => {
+    if (!deferredPrompt) { toast("Use your browser menu → Install app / Add to Home Screen"); return; }
+    deferredPrompt.prompt();
+    try { await deferredPrompt.userChoice; } catch (e) {}
+    deferredPrompt = null;
+    $("installBtn").style.display = "none";
+  };
+  window.addEventListener("appinstalled", () => {
+    const b = $("installBtn"); if (b) b.style.display = "none";
+    toast("TaskNest installed ✓");
+  });
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
   }
 
   // ---------- Init ----------

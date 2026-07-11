@@ -1,0 +1,17 @@
+{
+  "name": "TaskNest — Professional To-Do",
+  "short_name": "TaskNest",
+  "description": "A professional, offline-first to-do app with notebooks, priorities, deadlines, recurring tasks, subtasks, OCR scanning, Google sync, reminders and insights.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6fb",
+  "theme_color": "#4f46e5",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

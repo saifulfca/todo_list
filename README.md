@@ -64,7 +64,10 @@ Use the **Task / Project toggle** in the add bar:
 - A **Task** has a single **deadline** (the default).
 - A **Project** has a **start** and an **end** date. Projects show two bars: a **Timeline** bar (percent of the schedule elapsed, with a "starts in / days left / ended" label) and a **Milestones** bar that **rolls up completion from its checklist** (e.g. 3/5 · 60% done). The calendar bar also fills to match milestone completion.
 - **Dependencies** 🔗 — in a project's editor, pick which projects it "**depends on**" (starts after they finish). Move or resize a project and its dependents **cascade-shift automatically** to stay after it (chained, cycle-safe, durations preserved). Linked projects show a 🔗 badge and are **connected by arrows on the Month calendar**.
-- **Critical path** ⚡ — toggle "Critical path" in the Calendar to highlight the longest dependent chain of projects (the one that drives your end date) with a red outline and bold arrows.
+- **Critical path & slack** ⚡ — proper CPM scheduling. Each project shows its **slack/float** (how many days it can slip before it delays the plan) or an **⚡ Critical** badge when it has zero slack. Toggle "Critical path" in the Calendar to highlight the driving chain (red outline + bold arrows).
+- **Drag to link** — hover a project bar on the Month calendar and drag its **link dot** onto another project to create a dependency (cycle-safe).
+- **Baseline & drift** 📸 — click **Set baseline** to snapshot the plan. Afterwards each item shows how far it has moved (**▲ +Nd** late / **▼ −Nd** early), and the Month calendar draws a **dashed "ghost" bar** at each project's original position so you can see the drift. Toggle **drift** or **Clear** anytime.
+- **Plan summary** — the Calendar shows when your whole plan ends, how many projects are critical, and how many have slack.
 
 Both live together under their notebook and on the calendar.
 

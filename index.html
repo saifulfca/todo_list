@@ -798,6 +798,33 @@
   .cal-crit.active { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
   html[data-theme="dark"] .cal-crit.active { background: #3a2e17; color: #fbbf24; }
   .cal-proj.crit { box-shadow: 0 0 0 2px #ef4444, 0 2px 6px rgba(0,0,0,.3); z-index: 4; }
+  .cal-proj { overflow: visible; }
+
+  /* plan summary + baseline tools */
+  .cal-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; flex-wrap: wrap; }
+  .cal-summary { font-size: 12.5px; color: var(--text-soft); font-weight: 650; }
+  .cal-baseline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cal-tbtn { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); border-radius: 8px; padding: 5px 11px; font-size: 12px; font-weight: 650; cursor: pointer; font-family: var(--font); }
+  .cal-tbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .cal-drift-tog { font-size: 12px; color: var(--text-soft); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .cal-base-when { font-size: 11px; color: var(--text-faint); }
+
+  /* drag-to-link */
+  .cal-link { position: absolute; right: -13px; top: 50%; transform: translateY(-50%); width: 11px; height: 11px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); cursor: crosshair; z-index: 6; opacity: 0; transition: opacity .12s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .cal-proj:hover .cal-link { opacity: 1; }
+  .cal-proj.link-target { box-shadow: 0 0 0 3px var(--accent); z-index: 7; }
+  .link-temp { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 5 4; fill: none; }
+
+  /* baseline ghost bars */
+  .cal-proj-ghost { position: absolute; height: 18px; border: 1.5px dashed rgba(120,130,150,.8); border-radius: 5px; background: transparent; z-index: 1; pointer-events: none; }
+
+  /* slack / critical / drift badges */
+  .badge.crit-b { background: #fee2e2; color: #b91c1c; }
+  .badge.slack-b { background: #dcfce7; color: #15803d; }
+  .badge.drift-late { background: #fee2e2; color: #b91c1c; }
+  .badge.drift-early { background: #dcfce7; color: #15803d; }
+  html[data-theme="dark"] .badge.crit-b, html[data-theme="dark"] .badge.drift-late { background: #3a1f22; color: #fca5a5; }
+  html[data-theme="dark"] .badge.slack-b, html[data-theme="dark"] .badge.drift-early { background: #14331f; color: #86efac; }
 
   .cal-agenda { display: flex; flex-direction: column; gap: 20px; max-width: 760px; }
   .ag-date { font-size: 13.5px; font-weight: 750; margin-bottom: 9px; display: flex; align-items: center; gap: 9px; }
@@ -1175,7 +1202,11 @@
   let addType = "task";       // add-card mode: "task" or "project"
   let calMonth = new Date();  // anchor date shown in the Calendar view
   let calDragId = null;       // task id being dragged on the calendar
-  let _critSet = new Set();   // project ids on the critical path (when highlighted)
+  let _critSet = new Set();   // project ids highlighted on the calendar (toggle-gated)
+  let _critAll = new Set();   // all critical-path project ids (always computed)
+  let _projFloat = {};        // project id -> total float / slack (ms)
+  let _inGraph = new Set();   // project ids that participate in any dependency
+  let _projectEnd = null;     // ms timestamp of the whole plan's end
 
   function seed() {
     return {
@@ -1193,7 +1224,9 @@
       autoArchive: true,
       archivedOpen: false,
       calMode: "month",
-      calCritical: false
+      calCritical: false,
+      baseline: null,
+      showDrift: true
     };
   }
 
@@ -1246,6 +1279,8 @@
       data.archivedOpen = !!data.archivedOpen;
       data.calMode = ["month", "week", "agenda"].includes(data.calMode) ? data.calMode : "month";
       data.calCritical = !!data.calCritical;
+      data.baseline = (data.baseline && data.baseline.map) ? data.baseline : null;
+      data.showDrift = data.showDrift !== false;
       normalizeCats(data.categories);
       data.tasks = data.tasks.map(normalizeTask);
       return data;
@@ -1364,6 +1399,8 @@
     data.archivedOpen = !!data.archivedOpen;
     data.calMode = ["month", "week", "agenda"].includes(data.calMode) ? data.calMode : "month";
     data.calCritical = !!data.calCritical;
+    data.baseline = (data.baseline && data.baseline.map) ? data.baseline : null;
+    data.showDrift = data.showDrift !== false;
     normalizeCats(data.categories);
     data.tasks = (data.tasks || []).map(normalizeTask);
     state = data;
@@ -2848,6 +2885,8 @@
 
   // ---------- Render ----------
   function render() {
+    const _sch = computeSchedule();
+    _projFloat = _sch.floatMs; _critAll = _sch.critical; _inGraph = _sch.inGraph; _projectEnd = _sch.projectEnd;
     document.body.classList.toggle("manual-sort", state.sortMode === "manual");
     $("sortSelect").value = state.sortMode;
     document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.filter === filter));
@@ -3122,33 +3161,91 @@
   function fmtHour(h) { const ap = h < 12 ? "AM" : "PM"; const hr = h % 12 === 0 ? 12 : h % 12; return hr + " " + ap; }
   function fmtDur(m) { const h = Math.floor(m / 60), mm = m % 60; return (h ? h + "h" : "") + (mm ? (h ? " " : "") + mm + "m" : (h ? "" : "0m")); }
 
-  // Critical path: the longest chain of dependent projects (by total duration).
-  function computeCriticalPath() {
+  // CPM schedule: total float (slack) per project + the zero-slack critical set (backward pass).
+  function computeSchedule() {
     const projs = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
-    if (projs.length < 2) return new Set();
-    const dur = t => Math.max(0, new Date(t.deadline).getTime() - new Date(t.start).getTime());
-    // successors: pred -> [successors that depend on pred]
-    const succ = {};
-    projs.forEach(s => (s.deps || []).forEach(pid => { if (byId(pid)) { (succ[pid] = succ[pid] || []).push(s.id); } }));
-    const longest = {}, nextOf = {};
-    const visit = (id) => {
-      if (longest[id] != null) return longest[id];
-      longest[id] = 0; // guard against cycles
-      const t = byId(id); if (!t) return 0;
-      let best = 0, bestNext = null;
-      (succ[id] || []).forEach(sid => { const v = visit(sid); if (v > best) { best = v; bestNext = sid; } });
-      nextOf[id] = bestNext;
-      return (longest[id] = dur(t) + best);
+    const floatMs = {}, critical = new Set(), inGraph = new Set();
+    if (!projs.length) return { floatMs, critical, inGraph, projectEnd: null };
+    const end = t => new Date(t.deadline).getTime();
+    const dur = t => Math.max(0, end(t) - new Date(t.start).getTime());
+    const succ = {}; let anyDep = false;
+    projs.forEach(s => (s.deps || []).forEach(pid => { if (byId(pid)) { (succ[pid] = succ[pid] || []).push(s.id); inGraph.add(s.id); inGraph.add(pid); anyDep = true; } }));
+    const projectEnd = Math.max.apply(null, projs.map(end));
+    const LF = {};
+    const computeLF = (id, seen) => {
+      if (LF[id] != null) return LF[id];
+      if (seen.has(id)) return projectEnd; // cycle guard
+      seen.add(id);
+      const sl = succ[id] || [];
+      if (!sl.length) return (LF[id] = projectEnd);
+      let m = Infinity;
+      sl.forEach(sid => { const s = byId(sid); if (!s) return; const ls = computeLF(sid, seen) - dur(s); if (ls < m) m = ls; });
+      return (LF[id] = (m === Infinity ? projectEnd : m));
     };
-    let anyDep = false;
-    projs.forEach(p => { if ((p.deps || []).some(d => byId(d))) anyDep = true; visit(p.id); });
-    if (!anyDep) return new Set();
-    // start = project maximizing longest[]
-    let startId = null, max = -1;
-    projs.forEach(p => { if (longest[p.id] > max) { max = longest[p.id]; startId = p.id; } });
-    const path = new Set(); let cur = startId; let guard = 0;
-    while (cur && guard++ < 1000) { path.add(cur); cur = nextOf[cur]; }
-    return path.size > 1 ? path : new Set();
+    projs.forEach(p => { floatMs[p.id] = Math.max(0, computeLF(p.id, new Set()) - end(p)); });
+    if (anyDep) projs.forEach(p => { if (inGraph.has(p.id) && floatMs[p.id] < 60000) critical.add(p.id); });
+    return { floatMs, critical, inGraph, projectEnd };
+  }
+
+  // ── baseline (snapshot) & drift ──
+  function setBaseline() {
+    const map = {};
+    state.tasks.forEach(t => {
+      if (t.type === "project" && t.start && t.deadline) map[t.id] = { s: t.start, e: t.deadline };
+      else if (t.deadline) map[t.id] = { e: t.deadline };
+    });
+    state.baseline = { at: Date.now(), map }; save();
+  }
+  function driftBadge(t) {
+    if (!state.baseline || state.showDrift === false) return "";
+    const b = state.baseline.map[t.id]; if (!b || !b.e || !t.deadline) return "";
+    const delta = Math.round((new Date(t.deadline).getTime() - new Date(b.e).getTime()) / 86400000);
+    if (delta === 0) return "";
+    return delta > 0
+      ? `<span class="badge drift-late" title="${delta} day(s) later than baseline">▲ +${delta}d</span>`
+      : `<span class="badge drift-early" title="${-delta} day(s) earlier than baseline">▼ ${delta}d</span>`;
+  }
+
+  // ── drag-to-create a dependency (predecessor → successor) ──
+  function startLinkDrag(sourceId, e) {
+    e.preventDefault(); e.stopPropagation();
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("style", "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:visible");
+    const path = document.createElementNS(NS, "path"); path.setAttribute("class", "link-temp"); svg.appendChild(path);
+    document.body.appendChild(svg);
+    const r = e.target.getBoundingClientRect(); const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2;
+    let targetEl = null;
+    const move = ev => {
+      const mx = Math.max(8, Math.abs(ev.clientX - x0) * 0.4);
+      path.setAttribute("d", `M ${x0} ${y0} C ${x0 + mx} ${y0}, ${ev.clientX - mx} ${ev.clientY}, ${ev.clientX} ${ev.clientY}`);
+      if (targetEl) targetEl.classList.remove("link-target");
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const bar = el && el.closest ? el.closest(".cal-proj[data-id]") : null;
+      targetEl = (bar && bar.getAttribute("data-id") !== sourceId) ? bar : null;
+      if (targetEl) targetEl.classList.add("link-target");
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up);
+      svg.remove();
+      if (targetEl) {
+        targetEl.classList.remove("link-target");
+        const targetId = targetEl.getAttribute("data-id");
+        const target = byId(targetId), source = byId(sourceId);
+        if (target && source && targetId !== sourceId) {
+          if (wouldCycle(targetId, sourceId)) { toast("⚠ That would create a dependency loop"); return; }
+          if (!target.deps.includes(sourceId)) {
+            target.deps.push(sourceId); clampToDeps(target);
+            const sh = cascadeSchedule([targetId]); save(); render();
+            toast("🔗 “" + target.title + "” now starts after “" + source.title + "”" + (sh.length ? " · shifted " + sh.length : ""));
+          }
+        }
+      }
+    };
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+  }
+  function projGhostHtml(p, left, width, top) {
+    return `<div class="cal-proj-ghost" title="Baseline: ${esc(rangeLabel(p))}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px"></div>`;
   }
 
   function projBarHtml(p, left, width, top, contL, contR) {
@@ -3156,7 +3253,7 @@
     const comp = projectCompletion(p).pct;
     const dep = (p.deps && p.deps.length) ? "🔗 " : "";
     const crit = _critSet.has(p.id) ? " crit" : "";
-    return `<div class="cal-proj ${p.completed ? "done" : ""} ${contL ? "cont-l" : ""} ${contR ? "cont-r" : ""}${crit}" data-id="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))}) · ${comp}% done${p.deps && p.deps.length ? " · depends on " + p.deps.length : ""}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;background:${cat.color}">${contL ? "" : `<span class="cal-proj-h l"></span>`}<span class="cal-proj-label">${contL ? "" : "📊 "}${dep}${esc(p.title)}</span>${contR ? "" : `<span class="cal-proj-h r"></span>`}<span class="cal-proj-fill" style="width:${comp}%"></span></div>`;
+    return `<div class="cal-proj ${p.completed ? "done" : ""} ${contL ? "cont-l" : ""} ${contR ? "cont-r" : ""}${crit}" data-id="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))}) · ${comp}% done${p.deps && p.deps.length ? " · depends on " + p.deps.length : ""}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;background:${cat.color}">${contL ? "" : `<span class="cal-proj-h l"></span>`}<span class="cal-proj-label">${contL ? "" : "📊 "}${dep}${esc(p.title)}</span>${contR ? "" : `<span class="cal-proj-h r"></span>`}<span class="cal-proj-fill" style="width:${comp}%"></span><span class="cal-link" title="Drag to another project to link"></span></div>`;
   }
   function chipHtml(t) {
     const cat = state.categories.find(c => c.id === t.categoryId) || { color: "#888" };
@@ -3184,7 +3281,7 @@
   function renderCalendar() {
     const view = $("calendarView");
     const mode = state.calMode || "month";
-    _critSet = state.calCritical ? computeCriticalPath() : new Set();
+    _critSet = state.calCritical ? _critAll : new Set();
     let title;
     if (mode === "month") title = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
     else if (mode === "week") { const ws = calWeekStart(calMonth), we = new Date(ws); we.setDate(we.getDate() + 6); title = fmtDate(ws) + " – " + fmtDate(we); }
@@ -3204,6 +3301,13 @@
           <button class="cal-crit ${state.calCritical ? "active" : ""}" id="calCrit" title="Highlight the critical path across linked projects">⚡ Critical path</button>
         </div>
       </div>
+      <div class="cal-tools">
+        <span class="cal-summary" id="calSummary"></span>
+        <span class="cal-baseline">
+          <button class="cal-tbtn" id="calBaseSet">📸 ${state.baseline ? "Update baseline" : "Set baseline"}</button>
+          ${state.baseline ? `<label class="cal-drift-tog"><input type="checkbox" id="calDrift" ${state.showDrift !== false ? "checked" : ""}/> drift</label><button class="cal-tbtn" id="calBaseClear">Clear</button><span class="cal-base-when">since ${new Date(state.baseline.at).toLocaleDateString()}</span>` : ""}
+        </span>
+      </div>
       <div id="calBody"></div>`;
     if ($("calPrev")) $("calPrev").onclick = () => { const d = new Date(calMonth); if (mode === "month") d.setMonth(d.getMonth() - 1); else d.setDate(d.getDate() - 7); calMonth = d; renderCalendar(); };
     if ($("calNext")) $("calNext").onclick = () => { const d = new Date(calMonth); if (mode === "month") d.setMonth(d.getMonth() + 1); else d.setDate(d.getDate() + 7); calMonth = d; renderCalendar(); };
@@ -3211,9 +3315,19 @@
     view.querySelectorAll(".cal-mode").forEach(b => b.onclick = () => { state.calMode = b.dataset.mode; save(); renderCalendar(); });
     $("calCrit").onclick = () => {
       state.calCritical = !state.calCritical; save(); renderCalendar();
-      const n = computeCriticalPath().size;
-      toast(state.calCritical ? (n ? "⚡ Critical path: " + n + " linked projects" : "No linked projects to chain yet") : "Critical path off");
+      toast(state.calCritical ? (_critAll.size ? "⚡ Critical path: " + _critAll.size + " projects" : "No linked projects to chain yet") : "Critical path off");
     };
+    // plan summary + baseline controls
+    const projs = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
+    if ($("calSummary")) {
+      if (projs.length && _projectEnd) {
+        const withSlack = projs.filter(p => _inGraph.has(p.id) && (_projFloat[p.id] || 0) >= 86400000).length;
+        $("calSummary").textContent = "Plan ends " + fmtDate(new Date(_projectEnd)) + (_critAll.size ? " · ⚡ " + _critAll.size + " critical" : "") + (withSlack ? " · " + withSlack + " with slack" : "");
+      } else $("calSummary").textContent = "";
+    }
+    $("calBaseSet").onclick = () => { setBaseline(); renderCalendar(); toast("📸 Baseline captured — drift now tracked"); };
+    if ($("calBaseClear")) $("calBaseClear").onclick = () => { state.baseline = null; save(); renderCalendar(); toast("Baseline cleared"); };
+    if ($("calDrift")) $("calDrift").onchange = (e) => { state.showDrift = e.target.checked; save(); renderCalendar(); };
     const body = $("calBody");
     if (mode === "month") calBodyMonth(body);
     else if (mode === "week") calBodyWeek(body);
@@ -3236,6 +3350,13 @@
       const { segs, laneCount } = weekSegments(week, projects);
       const padTop = 24 + laneCount * BAR;
       html += `<div class="cal-week">`;
+      // ghost baseline bars (drift) drawn behind the real bars, in the same lane
+      if (state.baseline && state.showDrift !== false) {
+        const realLane = {}; segs.forEach(s => realLane[s.item.id] = s.lane);
+        const moved = projects.filter(p => { const b = state.baseline.map[p.id]; return b && b.s && (b.s !== p.start || b.e !== p.deadline) && realLane[p.id] != null; })
+          .map(p => ({ ...p, start: state.baseline.map[p.id].s, deadline: state.baseline.map[p.id].e, _g: p.id }));
+        weekSegments(week, moved).segs.forEach(g => { const ln = realLane[g.item._g]; if (ln != null) html += projGhostHtml(g.item, g.startCol / 7 * 100, (g.endCol - g.startCol + 1) / 7 * 100, 24 + ln * BAR); });
+      }
       segs.forEach(seg => { html += projBarHtml(seg.item, seg.startCol / 7 * 100, (seg.endCol - seg.startCol + 1) / 7 * 100, 24 + seg.lane * BAR, seg.contL, seg.contR); });
       html += `<div class="cal-days">`;
       week.forEach(day => {
@@ -3449,6 +3570,8 @@
         const lh = bar.querySelector(".cal-proj-h.l"), rh = bar.querySelector(".cal-proj-h.r");
         if (lh) attachProjPointer(lh, bar, id, "start", daysEl);
         if (rh) attachProjPointer(rh, bar, id, "end", daysEl);
+        const link = bar.querySelector(".cal-link");
+        if (link) link.addEventListener("pointerdown", e => startLinkDrag(id, e));
       });
     });
   }
@@ -3505,6 +3628,8 @@
               ? (rangeLabel(t) ? `<span class="badge range">🗓 ${esc(rangeLabel(t))}</span>` : "")
               : (di ? `<span class="badge date ${di.cls}">🕒 ${esc(di.txt)}</span>` : "")}
             ${isProject && t.deps && t.deps.length ? `<span class="badge dep" title="Starts after ${t.deps.length} project(s) finish">🔗 after ${t.deps.length}</span>` : ""}
+            ${isProject && _inGraph.has(t.id) ? (_critAll.has(t.id) ? `<span class="badge crit-b" title="On the critical path — zero slack">⚡ Critical</span>` : `<span class="badge slack-b" title="Total float / slack">🟢 ${Math.round((_projFloat[t.id] || 0) / 86400000)}d slack</span>`) : ""}
+            ${driftBadge(t)}
             ${!isProject && t.recur !== "none" ? `<span class="badge recur">🔁 ${RECUR_LABEL[t.recur]}</span>` : ""}
             ${subTotal ? `<span class="badge sub">☑ ${subDone}/${subTotal}</span>` : ""}
             ${catBadge}

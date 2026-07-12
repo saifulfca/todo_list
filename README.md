@@ -36,7 +36,7 @@ Open the live URL and either use the **⬇️ Install app** button in the sideba
 - Separate **notebooks** for **Office**, **Personal**, **Other** — and create your own with custom colors.
 - **All Tasks** view aggregates everything, with a source-notebook label on each task.
 - **Today** smart view — everything due today or overdue, across every notebook, in one place.
-- **Archiving** 📦 — notebooks whose tasks are all completed **auto-archive** (so the sidebar stays tidy), and you can archive any notebook by hand. Archived notebooks live in a collapsible **Archived** section, are hidden from All Tasks/Today, and can be restored in one click. Reopening or adding a task un-archives an auto-archived notebook automatically. Toggle auto-archive on/off inside the Archived section.
+- **Archiving** 📦 — notebooks whose tasks are all completed **auto-archive** (so the sidebar stays tidy), and you can archive any notebook by hand. Archived notebooks live in a collapsible **Archived** section, are hidden from All Tasks/Today, and can be restored in one click. Reopening or adding a task un-archives an auto-archived notebook automatically. Toggle auto-archive on/off inside the Archived section, which also **remembers whether it's expanded** between sessions.
 - **Tags** (`#urgent`, `#client`, …) shown as chips; click a tag to filter instantly.
 - **Search** across titles, notes, tags, and checklist items (press `/` to jump to search).
 
@@ -81,7 +81,7 @@ A dedicated **Insights** view (in the sidebar) with:
 - Breakdowns **by notebook** and **active by priority**.
 All rendered with pure HTML/CSS — no external chart libraries.
 
-**Click any number to drill in:** every stat — on the Insights dashboard *and* the Today/All Tasks headers (Active, Overdue, Completed, Done-this-week, the 7-day bars, priority rows) — is clickable. Clicking it opens a list of exactly those tasks; click a task there to **jump straight to it and flash-highlight it**. Clicking a notebook in the breakdown opens that notebook.
+**Click any number to drill in:** every stat — on the Insights dashboard *and* the Today/All Tasks headers (Active, Overdue, Completed, Done-this-week, the 7-day bars, priority rows) — is clickable. Clicking it opens a list of exactly those tasks; click a task there to **jump straight to it and flash-highlight it**. Long lists get a **filter box** to quickly narrow them down. Clicking a notebook in the breakdown opens that notebook.
 
 ### 🔔 Reminders & productivity polish
 - **Due reminders** — flip on the bell in the top bar to get a browser notification when a task falls due (opt-in; runs while the app is open).

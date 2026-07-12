@@ -636,7 +636,13 @@
 
   /* drill-down modal */
   .modal.drill { max-width: 560px; width: 94%; }
-  .drill-list { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; margin: 4px -4px 6px; padding: 0 4px; }
+  .drill-search { margin-bottom: 10px; }
+  .drill-search input {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--surface-2); color: var(--text); font-family: var(--font); font-size: 13.5px; outline: none;
+  }
+  .drill-search input:focus { border-color: var(--accent); }
+  .drill-list { max-height: 56vh; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; margin: 4px -4px 6px; padding: 0 4px; }
   .drill-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); cursor: pointer; transition: all .12s; }
   .drill-row:hover { border-color: var(--accent); background: var(--accent-soft); }
   .drill-row.done { opacity: .6; }
@@ -961,6 +967,9 @@
   <div class="modal-back" id="drillModal">
     <div class="modal drill">
       <h3 id="drillTitle">Tasks</h3>
+      <div class="drill-search" id="drillSearchWrap" style="display:none">
+        <input type="text" id="drillSearch" placeholder="Filter these tasks…" spellcheck="false" />
+      </div>
       <div class="drill-list" id="drillList"></div>
       <div class="drill-hint">Click any task to jump to it and highlight it.</div>
       <div class="modal-actions"><button class="btn-ghost" id="drillClose">Close</button></div>
@@ -999,9 +1008,10 @@
   let expanded = new Set();   // UI-only: expanded task ids
   let focusSubFor = null;     // task id whose sub-add input to refocus after render
   let dragId = null;
-  let archivedOpen = false;   // UI-only: is the Archived section expanded
   let highlightId = null;     // task id to scroll to + flash after render
   let _justArchived = [];     // notebook names auto-archived by the last save
+  let drillAll = [];          // tasks currently shown in the drill-down modal
+  let drillTitleBase = "";    // drill-down title text (before the count)
 
   function seed() {
     return {
@@ -1016,7 +1026,8 @@
       google: { clientId: "", autoSync: true },
       remind: false,
       notified: [],
-      autoArchive: true
+      autoArchive: true,
+      archivedOpen: false
     };
   }
 
@@ -1062,6 +1073,7 @@
       data.remind = !!data.remind;
       data.notified = Array.isArray(data.notified) ? data.notified : [];
       data.autoArchive = data.autoArchive !== false;
+      data.archivedOpen = !!data.archivedOpen;
       normalizeCats(data.categories);
       data.tasks = data.tasks.map(normalizeTask);
       return data;
@@ -1114,30 +1126,47 @@
 
   // ---------- Drill-down: click a dashboard number to reveal & jump to tasks ----------
   function openDrill(title, tasks) {
-    tasks = sortTasks(tasks.slice());
-    $("drillTitle").textContent = title + " · " + tasks.length;
-    const list = $("drillList");
-    if (!tasks.length) { list.innerHTML = '<div class="drill-empty">No tasks here. 🎉</div>'; }
-    else {
-      list.innerHTML = "";
-      tasks.forEach(t => {
-        const cat = state.categories.find(c => c.id === t.categoryId);
-        const di = deadlineInfo(t.deadline);
-        const row = document.createElement("div");
-        row.className = "drill-row" + (t.completed ? " done" : "");
-        row.innerHTML = `
-          <span class="drill-check ${t.completed ? "checked" : ""}"></span>
-          <span class="drill-t">${esc(t.title)}</span>
-          <span class="drill-meta">
-            ${cat ? `<span class="badge" style="background:${cat.color}1f;color:${cat.color}">${esc(cat.name)}</span>` : ""}
-            <span class="badge ${t.priority}">${PRIO_LABEL[t.priority]}</span>
-            ${di ? `<span class="badge date ${di.cls}">${esc(di.txt)}</span>` : ""}
-          </span>`;
-        row.onclick = () => { $("drillModal").classList.remove("open"); jumpToTask(t.id); };
-        list.appendChild(row);
-      });
-    }
+    drillAll = sortTasks(tasks.slice());
+    drillTitleBase = title;
+    const s = $("drillSearch");
+    s.value = "";
+    const showSearch = drillAll.length > 6;
+    $("drillSearchWrap").style.display = showSearch ? "block" : "none";
+    renderDrillList("");
     $("drillModal").classList.add("open");
+    if (showSearch) setTimeout(() => s.focus(), 60);
+  }
+  function renderDrillList(q) {
+    q = (q || "").trim().toLowerCase();
+    const filtered = q ? drillAll.filter(t => {
+      const cat = state.categories.find(c => c.id === t.categoryId);
+      return t.title.toLowerCase().includes(q) ||
+        (t.notes || "").toLowerCase().includes(q) ||
+        (t.tags || []).some(tg => tg.toLowerCase().includes(q)) ||
+        (cat && cat.name.toLowerCase().includes(q));
+    }) : drillAll;
+    $("drillTitle").textContent = drillTitleBase + " · " + filtered.length +
+      (q && filtered.length !== drillAll.length ? " of " + drillAll.length : "");
+    const list = $("drillList");
+    if (!drillAll.length) { list.innerHTML = '<div class="drill-empty">No tasks here. 🎉</div>'; return; }
+    if (!filtered.length) { list.innerHTML = '<div class="drill-empty">No tasks match “' + esc(q) + '”.</div>'; return; }
+    list.innerHTML = "";
+    filtered.forEach(t => {
+      const cat = state.categories.find(c => c.id === t.categoryId);
+      const di = deadlineInfo(t.deadline);
+      const row = document.createElement("div");
+      row.className = "drill-row" + (t.completed ? " done" : "");
+      row.innerHTML = `
+        <span class="drill-check ${t.completed ? "checked" : ""}"></span>
+        <span class="drill-t">${esc(t.title)}</span>
+        <span class="drill-meta">
+          ${cat ? `<span class="badge" style="background:${cat.color}1f;color:${cat.color}">${esc(cat.name)}</span>` : ""}
+          <span class="badge ${t.priority}">${PRIO_LABEL[t.priority]}</span>
+          ${di ? `<span class="badge date ${di.cls}">${esc(di.txt)}</span>` : ""}
+        </span>`;
+      row.onclick = () => { $("drillModal").classList.remove("open"); jumpToTask(t.id); };
+      list.appendChild(row);
+    });
   }
   function jumpToTask(id) {
     const t = state.tasks.find(x => x.id === id); if (!t) return;
@@ -1160,6 +1189,7 @@
     data.remind = !!data.remind;
     data.notified = Array.isArray(data.notified) ? data.notified : [];
     data.autoArchive = data.autoArchive !== false;
+    data.archivedOpen = !!data.archivedOpen;
     normalizeCats(data.categories);
     data.tasks = (data.tasks || []).map(normalizeTask);
     state = data;
@@ -1217,15 +1247,15 @@
     // Archived (collapsible)
     const arch = archivedCats();
     const header = document.createElement("li");
-    header.className = "cat-item arch-header" + (archivedOpen ? " open" : "");
+    header.className = "cat-item arch-header" + (state.archivedOpen ? " open" : "");
     header.innerHTML = `
       <span class="cat-name">📦 Archived</span>
       <span class="cat-count">${arch.length}</span>
       <span class="arch-chevron">⌄</span>`;
-    header.onclick = () => { archivedOpen = !archivedOpen; renderCats(); };
+    header.onclick = () => { state.archivedOpen = !state.archivedOpen; save(); renderCats(); };
     catList.appendChild(header);
 
-    if (archivedOpen) {
+    if (state.archivedOpen) {
       const tog = document.createElement("li");
       tog.className = "arch-toggle";
       tog.innerHTML = `<span>Auto-archive when all done</span>
@@ -2574,6 +2604,7 @@
   // drill-down + archived banner wiring
   $("drillClose").onclick = () => $("drillModal").classList.remove("open");
   $("drillModal").onclick = (e) => { if (e.target === $("drillModal")) $("drillModal").classList.remove("open"); };
+  $("drillSearch").oninput = (e) => renderDrillList(e.target.value);
   $("archBannerRestore").onclick = () => { if (activeCat && activeCat !== "all" && activeCat !== "today" && activeCat !== "insights") unarchiveCategory(activeCat); };
   $("fsCreate").onclick = () => FileStore.create();
   $("fsOpen").onclick = () => FileStore.open();

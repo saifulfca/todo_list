@@ -671,6 +671,64 @@
   }
   .arch-banner span { flex: 1; }
 
+  /* Task/Project toggle */
+  .type-toggle { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 3px; margin-bottom: 4px; }
+  .tt-btn { border: none; background: none; color: var(--text-soft); font-family: var(--font); font-size: 13px; font-weight: 650; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: all .15s; }
+  .tt-btn.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .add-card.project-mode { border-color: #0ea5e9; }
+  .add-card.project-mode .add-plus { background: #e0f2fe; color: #0284c7; }
+  html[data-theme="dark"] .add-card.project-mode .add-plus { background: #0c3549; color: #38bdf8; }
+
+  /* Project cards in lists */
+  .task.is-project { border-left-color: #0ea5e9; }
+  .badge.project { background: #e0f2fe; color: #0369a1; }
+  html[data-theme="dark"] .badge.project { background: #0c3549; color: #7dd3fc; }
+  .badge.range { background: var(--surface-2); color: var(--text-soft); }
+  .proj-progress { margin-top: 9px; display: flex; align-items: center; gap: 9px; }
+  .proj-progress .ptrack { flex: 1; height: 6px; background: var(--surface-2); border-radius: 20px; overflow: hidden; max-width: 260px; }
+  .proj-progress .pfill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #38bdf8); border-radius: 20px; transition: width .4s; }
+  .proj-progress .plbl { font-size: 11px; color: var(--text-faint); font-weight: 700; white-space: nowrap; }
+  .proj-progress .plbl.ended { color: var(--overdue); }
+
+  /* ---------- Calendar ---------- */
+  #calendarView { padding-bottom: 10px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+  .cal-nav { display: flex; align-items: center; gap: 8px; }
+  .cal-nav h3 { font-size: 18px; font-weight: 750; min-width: 168px; text-align: center; letter-spacing: -.3px; }
+  .cal-btn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); font-size: 18px; cursor: pointer; display: grid; place-items: center; transition: all .15s; }
+  .cal-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cal-today { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); border-radius: 9px; padding: 0 14px; height: 34px; font-weight: 650; font-size: 13px; cursor: pointer; font-family: var(--font); }
+  .cal-today:hover { border-color: var(--accent); color: var(--accent); }
+  .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+  .cal-dow > div { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: .5px; padding: 2px 0; }
+  .cal-grid { display: flex; flex-direction: column; gap: 6px; }
+  .cal-week { position: relative; }
+  .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-day { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-height: 96px; padding: 4px 5px 6px; position: relative; cursor: pointer; transition: background .12s; overflow: hidden; }
+  .cal-day:hover { background: var(--surface-2); }
+  .cal-day.out { opacity: .48; }
+  .cal-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .cal-daynum { position: absolute; top: 4px; left: 8px; font-size: 12.5px; font-weight: 700; color: var(--text-soft); }
+  .cal-day.today .cal-daynum { background: var(--accent); color: #fff; width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; top: 3px; left: 5px; }
+  .cal-chip { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 6px; margin: 2px 0; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .cal-chip:hover { border-color: var(--accent); }
+  .cal-chip.done { opacity: .5; text-decoration: line-through; }
+  .cal-chip .cal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .cal-more { font-size: 10.5px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 1px 6px; }
+  .cal-proj { position: absolute; height: 18px; border-radius: 5px; color: #fff; font-size: 10.5px; font-weight: 700; line-height: 18px; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; z-index: 2; box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+  .cal-proj:hover { filter: brightness(1.08); }
+  .cal-proj.done { opacity: .55; }
+  .cal-proj.cont-l { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .cal-proj.cont-r { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .cal-legend { display: flex; gap: 14px; align-items: center; font-size: 12px; color: var(--text-faint); font-weight: 600; }
+  .cal-legend .lg { display: inline-flex; align-items: center; gap: 5px; }
+  .cal-legend .lg .sw { width: 12px; height: 12px; border-radius: 3px; }
+  @media (max-width: 720px) {
+    .cal-day { min-height: 62px; }
+    .cal-chip { font-size: 10px; }
+    .cal-nav h3 { min-width: 120px; font-size: 15px; }
+  }
+
   /* confetti */
   .confetti {
     position: fixed; top: -14px; width: 9px; height: 15px; z-index: 200;
@@ -785,6 +843,10 @@
           <div class="add-details">
             <textarea id="taskNotes" placeholder="Notes / details (optional)"></textarea>
             <input type="text" class="text-in" id="taskTags" placeholder="Tags, comma separated (e.g. urgent, client, review)" />
+            <div class="type-toggle" id="typeToggle">
+              <button type="button" class="tt-btn active" data-type="task">✓ Task</button>
+              <button type="button" class="tt-btn" data-type="project">📊 Project</button>
+            </div>
             <div class="add-controls">
               <div class="field">
                 <label>Priority</label>
@@ -794,11 +856,15 @@
                   <option value="low">🟢 Low</option>
                 </select>
               </div>
-              <div class="field">
-                <label>Deadline</label>
-                <input type="datetime-local" id="taskDeadline" />
+              <div class="field" id="startField" style="display:none">
+                <label>Start</label>
+                <input type="datetime-local" id="taskStart" />
               </div>
               <div class="field">
+                <label id="deadlineLabel">Deadline</label>
+                <input type="datetime-local" id="taskDeadline" />
+              </div>
+              <div class="field" id="repeatField">
                 <label>Repeat</label>
                 <select id="taskRecur">
                   <option value="none" selected>No repeat</option>
@@ -809,7 +875,7 @@
               </div>
               <button class="add-btn" id="addTaskBtn">Add Task</button>
             </div>
-            <div class="qa-hint">Quick add — type it all in the title: <b>#tag</b> · <b>!high</b>/<b>!med</b>/<b>!low</b> · <b>@notebook</b> · dates like <b>tomorrow 5pm</b> · repeats like <b>every Monday</b></div>
+            <div class="qa-hint" id="qaHint">Quick add — type it in the title: <b>#Notebook</b> (creates it if new) · <b>+tag</b> · <b>!high</b>/<b>!med</b>/<b>!low</b> · dates like <b>by today 4pm</b> · repeats like <b>every Monday</b></div>
           </div>
         </div>
 
@@ -837,6 +903,9 @@
 
         <!-- Insights dashboard -->
         <div id="insightsView" style="display:none"></div>
+
+        <!-- Calendar view -->
+        <div id="calendarView" style="display:none"></div>
       </div>
     </div>
   </main>
@@ -1012,6 +1081,8 @@
   let _justArchived = [];     // notebook names auto-archived by the last save
   let drillAll = [];          // tasks currently shown in the drill-down modal
   let drillTitleBase = "";    // drill-down title text (before the count)
+  let addType = "task";       // add-card mode: "task" or "project"
+  let calMonth = new Date();  // month shown in the Calendar view
 
   function seed() {
     return {
@@ -1043,6 +1114,8 @@
       title: t.title || "",
       notes: t.notes || "",
       priority: t.priority || "med",
+      type: t.type === "project" ? "project" : "task",
+      start: t.start || "",
       deadline: t.deadline || "",
       completed: !!t.completed,
       createdAt: t.createdAt || Date.now(),
@@ -1242,6 +1315,7 @@
     catList.appendChild(specialItem("all", "All Tasks", "#9089fc", allCount));
     catList.appendChild(specialItem("today", "Today", "#ef6c4d", todayCount));
     catList.appendChild(specialItem("insights", "Insights", "#0ea5e9", null, "📊"));
+    catList.appendChild(specialItem("calendar", "Calendar", "#0ea5e9", null, "🗓"));
     activeCats().forEach(c => catList.appendChild(catItem(c, false, false)));
 
     // Archived (collapsible)
@@ -1330,6 +1404,8 @@
       title: fields.title || "",
       notes: fields.notes || "",
       priority: fields.priority || "med",
+      type: fields.type === "project" ? "project" : "task",
+      start: fields.start || "",
       deadline: fields.deadline || "",
       completed: false,
       createdAt: Date.now(),
@@ -1352,22 +1428,23 @@
     return "none";
   }
 
-  // Parse the quick-add box: #tags, !priority, @notebook, natural dates & repeats
+  // Parse the quick-add box: #Notebook / @Notebook (route/create), +tags, !priority,
+  // natural-language dates & repeats. Returns { title, tags, priority, catName, deadline, recur }.
   function parseQuickAdd(input) {
     let title = input;
     const tags = [];
-    let priority = null, catId = null;
+    let priority = null, catName = null;
 
-    title = title.replace(/(^|\s)#([\w-]{1,30})/g, (m, sp, tag) => { tags.push(tag); return sp; });
+    // Notebook: #{Multi Word} or @{Multi Word}
+    title = title.replace(/(^|\s)[#@]\{([^}]{1,40})\}/g, (m, sp, name) => { catName = name.trim(); return sp; });
+    // Notebook: #Word or @Word (single token)
+    title = title.replace(/(^|\s)[#@]([\w-]{1,30})/g, (m, sp, name) => { catName = name.trim(); return sp; });
 
-    title = title.replace(/(^|\s)@([\w-]{1,30})/g, (m, sp, name) => {
-      const n = name.toLowerCase();
-      const cat = state.categories.find(c => c.name.toLowerCase() === n) ||
-                  state.categories.find(c => c.name.toLowerCase().startsWith(n));
-      if (cat) { catId = cat.id; return sp; }
-      return m;
-    });
+    // Tags: +tag  or  +{multi word}
+    title = title.replace(/(^|\s)\+\{([^}]{1,40})\}/g, (m, sp, tag) => { tags.push(tag.trim()); return sp; });
+    title = title.replace(/(^|\s)\+([\w-]{1,30})/g, (m, sp, tag) => { tags.push(tag); return sp; });
 
+    // Priority: !high/!med/!low (and !!! / !!)
     title = title.replace(/(^|\s)!(high|med|medium|low|h|m|l|1|2|3)\b/gi, (m, sp, p) => {
       p = p.toLowerCase();
       priority = (p === "high" || p === "h" || p === "1") ? "high"
@@ -1378,14 +1455,32 @@
 
     title = title.replace(/\s{2,}/g, " ").trim();
 
-    return {
-      title,
-      tags,
-      priority,
-      catId,
-      deadline: OCR.guessDeadline(title),
-      recur: detectRecur(title)
-    };
+    // Natural-language deadline; if found, strip an explicit "by/before/due …" clause from the title.
+    const deadline = OCR.guessDeadline(title);
+    if (deadline) {
+      const stripped = title.replace(/\s*\b(?:by|before|due(?:\s+(?:on|by))?)\b\s+.+$/i, "").trim();
+      if (stripped) title = stripped;
+    }
+
+    return { title, tags, priority, catName, deadline, recur: detectRecur(input) };
+  }
+
+  // Format a Date as a datetime-local string (YYYY-MM-DDTHH:MM)
+  function toLocalInput(d) {
+    const p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+  // Find a notebook by name (exact, else prefix), creating one if none exists.
+  function resolveNotebook(name) {
+    if (!name) return null;
+    const n = name.toLowerCase();
+    let cat = state.categories.find(c => c.name.toLowerCase() === n) ||
+              state.categories.find(c => c.name.toLowerCase().startsWith(n));
+    if (cat) return { id: cat.id, created: false };
+    const id = uid();
+    const color = COLORS[state.categories.length % COLORS.length];
+    state.categories.push({ id, name: name, color, archived: false, archivedManually: false });
+    return { id, created: true, name };
   }
 
   function addTask() {
@@ -1393,36 +1488,48 @@
     if (!raw) { $("taskTitle").focus(); return; }
     const q = parseQuickAdd(raw);
     if (!q.title) { $("taskTitle").focus(); return; }
-    const isSpecial = activeCat === "all" || activeCat === "today";
-    let cat = q.catId || (isSpecial ? (state.categories[0] && state.categories[0].id) : activeCat);
+
+    // Route to a notebook: #Notebook wins (created if missing), else current notebook, else first.
+    const isSpecial = ["all", "today", "insights", "calendar"].includes(activeCat);
+    let cat, createdName = null;
+    if (q.catName) { const r = resolveNotebook(q.catName); cat = r.id; if (r.created) createdName = r.name; }
+    else cat = isSpecial ? (state.categories[0] && state.categories[0].id) : activeCat;
     if (!cat) { toast("Create a notebook first"); return; }
 
-    // explicit detail-field values take precedence when the user set them
     const fieldTags = $("taskTags").value.split(",").map(s => s.trim()).filter(Boolean);
     const tags = Array.from(new Set([...q.tags, ...fieldTags]));
-    const fieldDeadline = $("taskDeadline").value;
-    const fieldRecur = $("taskRecur").value;
     const fieldPrio = $("taskPriority").value;
+    const priority = q.priority || fieldPrio || "med";
+    const notes = $("taskNotes").value.trim();
 
-    state.tasks.push(createTaskObj({
-      categoryId: cat,
-      title: q.title,
-      notes: $("taskNotes").value.trim(),
-      priority: q.priority || fieldPrio || "med",
-      deadline: fieldDeadline || q.deadline || "",
-      recur: fieldRecur !== "none" ? fieldRecur : q.recur,
-      tags
-    }));
+    if (addType === "project") {
+      const start = $("taskStart").value || toLocalInput(new Date());
+      const end = $("taskDeadline").value || q.deadline || "";
+      if (!end) { toast("Set an end date for the project"); return; }
+      if (new Date(end) < new Date(start)) { toast("⚠ End is before start"); return; }
+      state.tasks.push(createTaskObj({ categoryId: cat, title: q.title, notes, priority, type: "project", start, deadline: end, tags }));
+    } else {
+      const fieldDeadline = $("taskDeadline").value;
+      const fieldRecur = $("taskRecur").value;
+      state.tasks.push(createTaskObj({
+        categoryId: cat, title: q.title, notes, priority,
+        deadline: fieldDeadline || q.deadline || "",
+        recur: fieldRecur !== "none" ? fieldRecur : q.recur, tags
+      }));
+    }
 
     $("taskTitle").value = ""; $("taskNotes").value = ""; $("taskTags").value = "";
-    $("taskDeadline").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
+    $("taskDeadline").value = ""; $("taskStart").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
     $("addCard").classList.remove("open");
+    if (createdName) activeCat = cat; // jump to a freshly-created notebook so the item is visible
     save(); render();
+
     const bits = [];
-    if (q.deadline && !fieldDeadline) bits.push("📅 due set");
-    if ((fieldRecur !== "none" ? fieldRecur : q.recur) !== "none") bits.push("🔁 repeat");
-    if (q.catId) bits.push("→ " + (state.categories.find(c => c.id === q.catId) || {}).name);
-    toast("Task added ✓" + (bits.length ? "  ·  " + bits.join(" · ") : ""));
+    if (createdName) bits.push("🆕 notebook “" + createdName + "”");
+    else if (q.catName) bits.push("→ " + (state.categories.find(c => c.id === cat) || {}).name);
+    if (addType === "project") bits.push("📊 project");
+    else if (q.deadline && !$("taskDeadline").value) bits.push("📅 due set");
+    toast((addType === "project" ? "Project added ✓" : "Task added ✓") + (bits.length ? "  ·  " + bits.join(" · ") : ""));
   }
 
   function nextDeadline(iso, recur) {
@@ -1638,6 +1745,25 @@
       (d.getHours() || d.getMinutes() ? ", " + fmtTime(d) : "");
   }
   function fmtTime(d) { return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
+
+  // ---------- Project helpers ----------
+  function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function projectProgress(t) {
+    if (!t.start || !t.deadline) return null;
+    const s = new Date(t.start).getTime(), e = new Date(t.deadline).getTime(), now = Date.now(), day = 86400000;
+    let pct = e > s ? Math.round((now - s) / (e - s) * 100) : (now >= e ? 100 : 0);
+    pct = Math.max(0, Math.min(100, pct));
+    let label, ended = false;
+    if (now < s) label = "starts in " + Math.max(1, Math.ceil((s - now) / day)) + "d";
+    else if (now > e) { label = "ended"; ended = true; }
+    else label = Math.max(1, Math.ceil((e - now) / day)) + "d left";
+    return { pct, label, ended };
+  }
+  function rangeLabel(t) {
+    if (t.start && t.deadline) return fmtDate(new Date(t.start)) + " → " + fmtDate(new Date(t.deadline));
+    return t.deadline ? fmtDate(new Date(t.deadline)) : "";
+  }
 
   // ---------- Google Calendar ----------
   function pushToGCal(t) {
@@ -2621,22 +2747,27 @@
     const catObj = activeCat === "all" ? { name: "All Tasks", color: "#9089fc" }
       : activeCat === "today" ? { name: "Today", color: "#ef6c4d" }
       : activeCat === "insights" ? { name: "📊 Insights", color: "#0ea5e9" }
+      : activeCat === "calendar" ? { name: "🗓 Calendar", color: "#0ea5e9" }
       : state.categories.find(c => c.id === activeCat) || { name: "All Tasks", color: "#9089fc" };
     catHeading.textContent = catObj.name;
     catDot.style.background = catObj.color;
 
-    // Insights dashboard replaces the task workflow
+    // Full-view panels (Insights / Calendar) replace the task workflow
     const isInsights = activeCat === "insights";
-    const isSpecial = isInsights || activeCat === "all" || activeCat === "today";
+    const isCalendar = activeCat === "calendar";
+    const isPanel = isInsights || isCalendar;
+    const isSpecial = isPanel || activeCat === "all" || activeCat === "today";
     const curArchived = !isSpecial && isArchived(activeCat);
-    $("archBanner").style.display = (!isInsights && curArchived) ? "flex" : "none";
-    $("addCard").style.display = isInsights ? "none" : "";
-    document.querySelector(".filter-bar").style.display = isInsights ? "none" : "flex";
-    statsRow.style.display = isInsights ? "none" : "flex";
-    taskList.style.display = isInsights ? "none" : "";
+    $("archBanner").style.display = (!isPanel && curArchived) ? "flex" : "none";
+    $("addCard").style.display = isPanel ? "none" : "";
+    document.querySelector(".filter-bar").style.display = isPanel ? "none" : "flex";
+    statsRow.style.display = isPanel ? "none" : "flex";
+    taskList.style.display = isPanel ? "none" : "";
     emptyState.style.display = "none";
     $("insightsView").style.display = isInsights ? "block" : "none";
+    $("calendarView").style.display = isCalendar ? "block" : "none";
     if (isInsights) { renderInsights(); return; }
+    if (isCalendar) { renderCalendar(); return; }
 
     renderStats();
 
@@ -2784,10 +2915,125 @@
     iv.querySelectorAll("[data-prio]").forEach(el => { const p = el.getAttribute("data-prio"); el.onclick = () => openDrill(PRIO_LABEL[p] + " priority (active)", tasks.filter(t => !t.completed && t.priority === p)); });
   }
 
+  // ---------- Calendar (month) ----------
+  function openDayDrill(ts) {
+    const day = new Date(ts);
+    const items = state.tasks.filter(t => !isArchived(t.categoryId));
+    const dayItems = items.filter(t => {
+      if (t.type === "project" && t.start && t.deadline) {
+        return startOfDay(new Date(t.start)).getTime() <= startOfDay(day).getTime() &&
+               startOfDay(day).getTime() <= startOfDay(new Date(t.deadline)).getTime();
+      }
+      return t.deadline && sameDay(new Date(t.deadline), day);
+    });
+    openDrill(day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }), dayItems);
+  }
+
+  function renderCalendar() {
+    const view = $("calendarView");
+    const y = calMonth.getFullYear(), mo = calMonth.getMonth();
+    const first = new Date(y, mo, 1);
+    const monthLabel = first.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const gridStart = new Date(first); gridStart.setDate(1 - first.getDay()); // back to Sunday
+
+    // build up to 6 weeks, trim trailing weeks fully outside this month
+    const weeks = [];
+    const cursor = new Date(gridStart);
+    for (let w = 0; w < 6; w++) {
+      const days = [];
+      for (let d = 0; d < 7; d++) { days.push(new Date(cursor)); cursor.setDate(cursor.getDate() + 1); }
+      weeks.push(days);
+    }
+    while (weeks.length > 4 && weeks[weeks.length - 1].every(d => d.getMonth() !== mo)) weeks.pop();
+
+    const items = state.tasks.filter(t => !isArchived(t.categoryId));
+    const projects = items.filter(t => t.type === "project" && t.start && t.deadline);
+    const today = new Date();
+    const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const BAR = 20;
+
+    let html = `
+      <div class="cal-head">
+        <div class="cal-nav">
+          <button class="cal-btn" id="calPrev" title="Previous month">‹</button>
+          <h3 id="calTitle">${monthLabel}</h3>
+          <button class="cal-btn" id="calNext" title="Next month">›</button>
+          <button class="cal-today" id="calToday">Today</button>
+        </div>
+        <div class="cal-legend"><span class="lg"><span class="sw" style="background:#0ea5e9"></span>Projects span days</span><span class="lg"><span class="sw" style="background:var(--accent)"></span>Tasks on due date</span></div>
+      </div>
+      <div class="cal-dow">${dow.map(d => `<div>${d}</div>`).join("")}</div>
+      <div class="cal-grid">`;
+
+    weeks.forEach(week => {
+      const wkStart = startOfDay(week[0]).getTime(), wkEnd = startOfDay(week[6]).getTime();
+      // project segments in this week
+      const segs = [];
+      projects.forEach(p => {
+        const s = startOfDay(new Date(p.start)).getTime(), e = startOfDay(new Date(p.deadline)).getTime();
+        if (e < wkStart || s > wkEnd) return;
+        let startCol = 0, endCol = 6, found = false;
+        for (let i = 0; i < 7; i++) {
+          const di = startOfDay(week[i]).getTime();
+          if (di >= s && !found) { startCol = i; found = true; }
+          if (di <= e) endCol = i;
+        }
+        if (!found) startCol = 0;
+        segs.push({ item: p, startCol, endCol, contL: s < wkStart, contR: e > wkEnd });
+      });
+      // assign lanes (greedy)
+      segs.sort((a, b) => a.startCol - b.startCol || a.endCol - b.endCol);
+      const laneEnd = [];
+      segs.forEach(seg => {
+        let lane = 0;
+        while (lane < laneEnd.length && laneEnd[lane] >= seg.startCol) lane++;
+        laneEnd[lane] = seg.endCol; seg.lane = lane;
+      });
+      const laneCount = laneEnd.length;
+      const padTop = 24 + laneCount * BAR;
+
+      html += `<div class="cal-week">`;
+      segs.forEach(seg => {
+        const p = seg.item;
+        const cat = state.categories.find(c => c.id === p.categoryId) || { color: "#0ea5e9" };
+        const left = seg.startCol / 7 * 100, width = (seg.endCol - seg.startCol + 1) / 7 * 100;
+        html += `<div class="cal-proj ${p.completed ? "done" : ""} ${seg.contL ? "cont-l" : ""} ${seg.contR ? "cont-r" : ""}" data-jump="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))})" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${24 + seg.lane * BAR}px;background:${cat.color}">${seg.contL ? "" : "📊 "}${esc(p.title)}</div>`;
+      });
+      html += `<div class="cal-days">`;
+      week.forEach(day => {
+        const inMonth = day.getMonth() === mo;
+        const isToday = sameDay(day, today);
+        const dayTasks = items.filter(t => t.type !== "project" && t.deadline && sameDay(new Date(t.deadline), day))
+          .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+        const shown = dayTasks.slice(0, 3), moreN = dayTasks.length - shown.length;
+        html += `<div class="cal-day ${inMonth ? "" : "out"} ${isToday ? "today" : ""}" data-day="${startOfDay(day).getTime()}" style="padding-top:${padTop}px">
+          <div class="cal-daynum">${day.getDate()}</div>
+          ${shown.map(t => {
+            const cat = state.categories.find(c => c.id === t.categoryId) || { color: "#888" };
+            return `<div class="cal-chip ${t.completed ? "done" : ""}" data-jump="${t.id}" title="${esc(t.title)}"><span class="cal-dot" style="background:${cat.color}"></span>${esc(t.title)}</div>`;
+          }).join("")}
+          ${moreN > 0 ? `<div class="cal-more" data-day="${startOfDay(day).getTime()}">+${moreN} more</div>` : ""}
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+    view.innerHTML = html;
+
+    $("calPrev").onclick = () => { calMonth = new Date(y, mo - 1, 1); renderCalendar(); };
+    $("calNext").onclick = () => { calMonth = new Date(y, mo + 1, 1); renderCalendar(); };
+    $("calToday").onclick = () => { calMonth = new Date(); renderCalendar(); };
+    view.querySelectorAll("[data-jump]").forEach(el => el.onclick = (e) => { e.stopPropagation(); jumpToTask(el.getAttribute("data-jump")); });
+    view.querySelectorAll(".cal-more").forEach(el => el.onclick = (e) => { e.stopPropagation(); openDayDrill(+el.getAttribute("data-day")); });
+    view.querySelectorAll(".cal-day").forEach(el => el.onclick = () => openDayDrill(+el.getAttribute("data-day")));
+  }
+
   function taskEl(t) {
     const li = document.createElement("li");
     const isOpen = expanded.has(t.id);
-    li.className = `task p-${t.priority}` + (t.completed ? " done" : "") + (isOpen ? " expanded" : "");
+    const isProject = t.type === "project";
+    const pp = isProject ? projectProgress(t) : null;
+    li.className = `task p-${t.priority}` + (t.completed ? " done" : "") + (isOpen ? " expanded" : "") + (isProject ? " is-project" : "");
     li.dataset.id = t.id;
 
     const di = deadlineInfo(t.deadline);
@@ -2807,13 +3053,17 @@
           <div class="task-title" data-title>${esc(t.title)}</div>
           ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ""}
           <div class="task-meta">
+            ${isProject ? `<span class="badge project">📊 Project</span>` : ""}
             <span class="badge ${t.priority}">${prioDot(t.priority)} ${PRIO_LABEL[t.priority]}</span>
-            ${di ? `<span class="badge date ${di.cls}">🕒 ${esc(di.txt)}</span>` : ""}
-            ${t.recur !== "none" ? `<span class="badge recur">🔁 ${RECUR_LABEL[t.recur]}</span>` : ""}
+            ${isProject
+              ? (rangeLabel(t) ? `<span class="badge range">🗓 ${esc(rangeLabel(t))}</span>` : "")
+              : (di ? `<span class="badge date ${di.cls}">🕒 ${esc(di.txt)}</span>` : "")}
+            ${!isProject && t.recur !== "none" ? `<span class="badge recur">🔁 ${RECUR_LABEL[t.recur]}</span>` : ""}
             ${subTotal ? `<span class="badge sub">☑ ${subDone}/${subTotal}</span>` : ""}
             ${catBadge}
             ${tagsHtml}
           </div>
+          ${isProject && pp ? `<div class="proj-progress"><div class="ptrack"><div class="pfill" style="width:${pp.pct}%"></div></div><span class="plbl ${pp.ended ? "ended" : ""}">${pp.pct}% · ${pp.label}</span></div>` : ""}
           ${subTotal ? `<div class="sub-mini"><div class="track"><div class="fill" style="width:${subPct}%"></div></div><span class="lbl">${subPct}%</span></div>` : ""}
           <div class="gpush">
             <button class="gbtn cal ${t.google.eventId ? "synced" : ""}" data-gcal title="${t.google.eventId ? "Synced to Google Calendar — click to update" : "Push to Google Calendar"}">
@@ -2854,6 +3104,15 @@
               <option value="low" ${t.priority==="low"?"selected":""}>🟢 Low</option>
             </select>
           </div>
+          ${isProject ? `
+          <div class="field">
+            <label>Start</label>
+            <input type="datetime-local" data-edit="start" value="${t.start}" />
+          </div>
+          <div class="field">
+            <label>End</label>
+            <input type="datetime-local" data-edit="deadline" value="${t.deadline}" />
+          </div>` : `
           <div class="field">
             <label>Deadline</label>
             <input type="datetime-local" data-edit="deadline" value="${t.deadline}" />
@@ -2866,7 +3125,7 @@
               <option value="weekly" ${t.recur==="weekly"?"selected":""}>🔁 Weekly</option>
               <option value="monthly" ${t.recur==="monthly"?"selected":""}>🔁 Monthly</option>
             </select>
-          </div>
+          </div>`}
           <div class="field" style="flex:1;min-width:160px">
             <label>Tags (comma separated)</label>
             <input type="text" class="text-in" data-edit="tags" value="${esc(t.tags.join(", "))}" />
@@ -2969,6 +3228,22 @@
   $("taskTitle").addEventListener("focus", () => addCard.classList.add("open"));
   $("taskTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addTask(); } });
   $("addTaskBtn").onclick = addTask;
+
+  // Task / Project mode toggle
+  function applyAddType() {
+    addCard.classList.toggle("project-mode", addType === "project");
+    document.querySelectorAll("#typeToggle .tt-btn").forEach(b => b.classList.toggle("active", b.dataset.type === addType));
+    const proj = addType === "project";
+    $("startField").style.display = proj ? "" : "none";
+    $("repeatField").style.display = proj ? "none" : "";
+    $("deadlineLabel").textContent = proj ? "End" : "Deadline";
+    $("addTaskBtn").textContent = proj ? "Add Project" : "Add Task";
+    $("taskTitle").placeholder = proj ? "Name your project…" : "Add a task and press Enter…";
+    $("qaHint").style.display = proj ? "none" : "";
+  }
+  document.querySelectorAll("#typeToggle .tt-btn").forEach(b => {
+    b.onclick = () => { addType = b.dataset.type; addCard.classList.add("open"); applyAddType(); if (addType === "project" && !$("taskStart").value) $("taskStart").value = toLocalInput(new Date()); };
+  });
   document.addEventListener("click", e => {
     if (!addCard.contains(e.target) && !$("taskTitle").value && !$("taskNotes").value && !$("taskTags").value)
       addCard.classList.remove("open");

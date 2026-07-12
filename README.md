@@ -43,13 +43,13 @@ Open the live URL and either use the **⬇️ Install app** button in the sideba
 ### ⚡ Natural-language quick add
 Type everything into the title box and it's parsed automatically — no need to open the detail fields:
 
-- `#tag` → adds tags
-- `@notebook` → files it in that notebook (matches by name or prefix, e.g. `@per` → Personal)
+- `#Notebook` → files it in that notebook, **creating it if it doesn't exist** (use `#{Two Words}` for multi-word names; `@Notebook` works too)
+- `+tag` → adds a tag (`+{multi word}` for multi-word tags)
 - `!high` / `!med` / `!low` (or `!!!` / `!!`) → sets priority
-- natural dates → sets the deadline, e.g. **tomorrow 5pm**, **by Friday**, **Jan 15**, **in 3 days**
+- natural dates → sets the deadline, e.g. **by today 4pm**, **tomorrow 5pm**, **by Friday**, **Jan 15**, **in 3 days** (the "by …" phrase is trimmed from the title)
 - repeats → **every Monday**, **daily**, **weekly**, **monthly**
 
-Example: `Pay rent tomorrow 5pm #home !high @Personal` becomes a High-priority task in Personal, tagged `home`, due tomorrow at 5pm. (Anything you set in the detail fields still wins.)
+Example: `I will finish the report by today 4 PM #Marketing !high` becomes a High-priority task titled "I will finish the report", filed in the **Marketing** notebook (created if new), due today at 4:00 PM. (Anything you set in the detail fields still wins.)
 
 ### 📷 Scan tasks from a screenshot (OCR)
 Turn an image into tasks — great for emails, meeting notes, or numbered/bulleted lists.
@@ -58,6 +58,13 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 - The app reads the text in your browser (via [Tesseract.js](https://tesseract.js.org/) — no upload to any server) and **splits it into separate tasks**, handling `1.`, `1)`, `-`, `*`, `•`, and checkbox markers, while ignoring email headers and greetings.
 - Each task is **auto-assigned a notebook** (from keywords / matching notebook names), a **priority** (e.g. "urgent"/"asap" → High), a **deadline** when a date/time is present (e.g. "by Friday", "tomorrow at 9am", "Jan 15 5pm", "2026-04-15", "in 3 days", "tonight"), and a **repeat** when detected (e.g. "every Monday" → weekly).
 - A review step lets you **edit each title, change the notebook/priority/deadline, include or exclude lines**, or tweak the raw recognized text and re-parse — then create them all at once.
+
+### Tasks & Projects 📊
+Use the **Task / Project toggle** in the add bar:
+- A **Task** has a single **deadline** (the default).
+- A **Project** has a **start** and an **end** date. Projects show a live **time-progress bar** (percent of the timeline elapsed) with a "starts in / days left / ended" label, a date range, and a distinct blue accent. Use the checklist as project milestones.
+
+Both live together under their notebook and on the calendar.
 
 ### Task management
 - **Priority**: High / Medium / Low, with colored accents and priority-aware sorting.
@@ -72,6 +79,13 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 - **Manual order** — drag and drop tasks into any order you like.
 - Filters: **All / Active / Completed / High priority / Due soon**.
 - **Clear completed** — tidy a view in one click (with an **Undo**).
+
+### 🗓 Calendar view
+A full **month calendar** (in the sidebar) that shows your whole plan at a glance:
+- **Tasks** appear as chips on their due date, colored by notebook (with "+N more" when a day is busy).
+- **Projects** render as **bars that span across their start→end days** — including across week boundaries — stacked into lanes like a Gantt/Google-Calendar timeline.
+- Navigate months with ‹ / › or jump to **Today**; today's cell is highlighted.
+- Click any **task or project** to jump to it (and flash-highlight it); click a **day** to see everything happening that day.
 
 ### 📊 Insights dashboard
 A dedicated **Insights** view (in the sidebar) with:

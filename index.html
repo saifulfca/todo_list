@@ -128,12 +128,25 @@
     background: var(--surface-2); padding: 1px 8px; border-radius: 20px;
   }
   .cat-item.active .cat-count { background: var(--surface); }
-  .cat-del {
+  .cat-act {
     display: none; background: none; border: none; color: var(--text-faint);
-    cursor: pointer; font-size: 14px; padding: 0 2px;
+    cursor: pointer; font-size: 13px; padding: 0 3px; line-height: 1;
   }
-  .cat-item:hover .cat-del { display: block; }
+  .cat-item:hover .cat-act { display: inline-block; }
   .cat-del:hover { color: var(--high); }
+  .cat-arch:hover, .cat-unarch:hover { color: var(--accent); }
+
+  /* Archived section */
+  .arch-header { margin-top: 6px; border-top: 1px dashed var(--border); border-radius: 0; padding-top: 12px; }
+  .arch-header .arch-chevron { color: var(--text-faint); font-size: 13px; transition: transform .2s; }
+  .arch-header.open .arch-chevron { transform: rotate(180deg); }
+  .arch-item { opacity: .82; }
+  .arch-item .cat-dot { opacity: .6; }
+  .arch-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 12px 9px; font-size: 11.5px; color: var(--text-faint); font-weight: 600; }
+  .arch-none { padding: 4px 12px 8px; font-size: 12px; color: var(--text-faint); font-style: italic; }
+  .switch.sm { width: 34px; height: 19px; }
+  .switch.sm .track::before { width: 13px; height: 13px; }
+  .switch.sm input:checked + .track::before { transform: translateX(15px); }
 
   .sidebar-foot { padding: 12px 14px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .sidebar-foot button {
@@ -612,6 +625,46 @@
   .streak-big .unit { font-size: 14px; color: var(--text-soft); font-weight: 600; }
   .streak-sub { font-size: 12.5px; color: var(--text-faint); margin-top: 8px; }
 
+  /* clickable stats (drill-down) */
+  .stat-card.clickable, .kpi.clickable, .ring.clickable { cursor: pointer; transition: box-shadow .15s, border-color .15s, transform .1s; }
+  .stat-card.clickable:hover, .kpi.clickable:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+  .bd-row.clickable, .bar-col.clickable { cursor: pointer; }
+  .bd-row.clickable:hover .bd-name { color: var(--accent); }
+  .bar-col.clickable:hover .bar { filter: brightness(1.12); }
+  .stat-card.clickable .num, .kpi.clickable .n { position: relative; }
+  .drill-hint { font-size: 10.5px; color: var(--text-faint); font-weight: 600; margin-top: 14px; text-align: center; }
+
+  /* drill-down modal */
+  .modal.drill { max-width: 560px; width: 94%; }
+  .drill-list { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; margin: 4px -4px 6px; padding: 0 4px; }
+  .drill-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); cursor: pointer; transition: all .12s; }
+  .drill-row:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .drill-row.done { opacity: .6; }
+  .drill-row.done .drill-t { text-decoration: line-through; color: var(--text-soft); }
+  .drill-check { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--border); flex-shrink: 0; display: grid; place-items: center; }
+  .drill-check.checked { background: var(--accent); border-color: var(--accent); }
+  .drill-check.checked::after { content: "✓"; color: #fff; font-size: 10px; font-weight: 800; }
+  .drill-t { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drill-meta { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+  .drill-meta .badge { font-size: 10px; padding: 2px 7px; }
+  .drill-empty { text-align: center; color: var(--text-faint); padding: 30px; font-size: 13.5px; }
+
+  /* jump-to highlight */
+  .task.flash { animation: flashHi 1.8s ease; }
+  @keyframes flashHi {
+    0% { box-shadow: 0 0 0 3px var(--accent), var(--shadow-lg); background: var(--accent-soft); }
+    60% { box-shadow: 0 0 0 3px var(--accent), var(--shadow-lg); background: var(--accent-soft); }
+    100% { box-shadow: var(--shadow); background: var(--surface); }
+  }
+
+  /* archived-notebook banner */
+  .arch-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2); border: 1px solid var(--border); border-left: 4px solid var(--text-faint);
+    border-radius: var(--radius); padding: 11px 14px; margin-bottom: 18px; font-size: 13px; color: var(--text-soft); font-weight: 600;
+  }
+  .arch-banner span { flex: 1; }
+
   /* confetti */
   .confetti {
     position: fixed; top: -14px; width: 9px; height: 15px; z-index: 200;
@@ -702,6 +755,12 @@
           <div class="fsb-text"><b>Keep your tasks safe</b> — save them to a file on your PC so they survive clearing browsing data.</div>
           <button class="fsb-link" id="fsBannerLink">Save to a file</button>
           <button class="fsb-x" id="fsBannerX" title="Not now">✕</button>
+        </div>
+
+        <!-- archived notebook banner -->
+        <div class="arch-banner" id="archBanner" style="display:none">
+          <span>📦 This notebook is archived — it's hidden from All Tasks &amp; Today.</span>
+          <button class="fsb-link" id="archBannerRestore">Unarchive</button>
         </div>
 
         <!-- stats -->
@@ -898,6 +957,16 @@
     </div>
   </div>
 
+  <!-- drill-down modal (clicking a dashboard number) -->
+  <div class="modal-back" id="drillModal">
+    <div class="modal drill">
+      <h3 id="drillTitle">Tasks</h3>
+      <div class="drill-list" id="drillList"></div>
+      <div class="drill-hint">Click any task to jump to it and highlight it.</div>
+      <div class="modal-actions"><button class="btn-ghost" id="drillClose">Close</button></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -930,6 +999,9 @@
   let expanded = new Set();   // UI-only: expanded task ids
   let focusSubFor = null;     // task id whose sub-add input to refocus after render
   let dragId = null;
+  let archivedOpen = false;   // UI-only: is the Archived section expanded
+  let highlightId = null;     // task id to scroll to + flash after render
+  let _justArchived = [];     // notebook names auto-archived by the last save
 
   function seed() {
     return {
@@ -943,8 +1015,14 @@
       sortMode: "smart",
       google: { clientId: "", autoSync: true },
       remind: false,
-      notified: []
+      notified: [],
+      autoArchive: true
     };
+  }
+
+  function normalizeCats(cats) {
+    (cats || []).forEach(c => { c.archived = !!c.archived; c.archivedManually = !!c.archivedManually; });
+    return cats || [];
   }
 
   function normalizeTask(t, i) {
@@ -983,16 +1061,91 @@
         : { clientId: "", autoSync: true };
       data.remind = !!data.remind;
       data.notified = Array.isArray(data.notified) ? data.notified : [];
+      data.autoArchive = data.autoArchive !== false;
+      normalizeCats(data.categories);
       data.tasks = data.tasks.map(normalizeTask);
       return data;
     } catch (e) { return seed(); }
   }
 
   function save() {
+    _justArchived = applyAutoArchive();
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
     catch (e) { toast("⚠ Could not save — storage may be full"); }
     if (typeof ServerStore !== "undefined" && ServerStore.active) ServerStore.scheduleWrite();
     if (typeof FileStore !== "undefined" && FileStore.handle) FileStore.scheduleWrite();
+  }
+
+  // ---------- Archiving ----------
+  function isArchived(catId) { const c = state.categories.find(x => x.id === catId); return !!(c && c.archived); }
+  function activeCats() { return state.categories.filter(c => !c.archived); }
+  function archivedCats() { return state.categories.filter(c => c.archived); }
+
+  // Auto-archive notebooks whose tasks are all completed; auto-unarchive when they get
+  // active tasks again. Manually-archived notebooks are left alone. Returns newly-archived names.
+  function applyAutoArchive() {
+    const newly = [];
+    if (state.autoArchive === false) return newly;
+    state.categories.forEach(c => {
+      const ct = state.tasks.filter(t => t.categoryId === c.id);
+      const allDone = ct.length > 0 && ct.every(t => t.completed);
+      if (!c.archived) {
+        if (allDone) { c.archived = true; c.archivedManually = false; newly.push(c.name); }
+      } else if (!c.archivedManually) {
+        if (ct.length === 0 || ct.some(t => !t.completed)) c.archived = false;
+      }
+    });
+    return newly;
+  }
+
+  function archiveCategory(id, manual) {
+    const c = state.categories.find(x => x.id === id); if (!c) return;
+    c.archived = true; c.archivedManually = !!manual;
+    if (activeCat === id) activeCat = "all";
+    save(); render();
+    toast("📦 “" + c.name + "” archived", "Undo", () => { c.archived = false; c.archivedManually = false; save(); render(); });
+  }
+  function unarchiveCategory(id) {
+    const c = state.categories.find(x => x.id === id); if (!c) return;
+    c.archived = false; c.archivedManually = false;
+    save(); render();
+    toast("“" + c.name + "” restored");
+  }
+
+  // ---------- Drill-down: click a dashboard number to reveal & jump to tasks ----------
+  function openDrill(title, tasks) {
+    tasks = sortTasks(tasks.slice());
+    $("drillTitle").textContent = title + " · " + tasks.length;
+    const list = $("drillList");
+    if (!tasks.length) { list.innerHTML = '<div class="drill-empty">No tasks here. 🎉</div>'; }
+    else {
+      list.innerHTML = "";
+      tasks.forEach(t => {
+        const cat = state.categories.find(c => c.id === t.categoryId);
+        const di = deadlineInfo(t.deadline);
+        const row = document.createElement("div");
+        row.className = "drill-row" + (t.completed ? " done" : "");
+        row.innerHTML = `
+          <span class="drill-check ${t.completed ? "checked" : ""}"></span>
+          <span class="drill-t">${esc(t.title)}</span>
+          <span class="drill-meta">
+            ${cat ? `<span class="badge" style="background:${cat.color}1f;color:${cat.color}">${esc(cat.name)}</span>` : ""}
+            <span class="badge ${t.priority}">${PRIO_LABEL[t.priority]}</span>
+            ${di ? `<span class="badge date ${di.cls}">${esc(di.txt)}</span>` : ""}
+          </span>`;
+        row.onclick = () => { $("drillModal").classList.remove("open"); jumpToTask(t.id); };
+        list.appendChild(row);
+      });
+    }
+    $("drillModal").classList.add("open");
+  }
+  function jumpToTask(id) {
+    const t = state.tasks.find(x => x.id === id); if (!t) return;
+    activeCat = t.categoryId; filter = "all"; search = ""; $("searchInput").value = "";
+    if (t.completed) expanded.delete(id);
+    highlightId = id;
+    render();
+    document.body.classList.remove("nav-open");
   }
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1006,6 +1159,8 @@
       : { clientId: "", autoSync: true };
     data.remind = !!data.remind;
     data.notified = Array.isArray(data.notified) ? data.notified : [];
+    data.autoArchive = data.autoArchive !== false;
+    normalizeCats(data.categories);
     data.tasks = (data.tasks || []).map(normalizeTask);
     state = data;
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -1051,13 +1206,42 @@
   // ---------- Categories ----------
   function renderCats() {
     catList.innerHTML = "";
-    const allCount = state.tasks.filter(t => !t.completed).length;
+    const allCount = state.tasks.filter(t => !t.completed && !isArchived(t.categoryId)).length;
     const e = endOfToday();
-    const todayCount = state.tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() <= e).length;
+    const todayCount = state.tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() <= e && !isArchived(t.categoryId)).length;
     catList.appendChild(specialItem("all", "All Tasks", "#9089fc", allCount));
     catList.appendChild(specialItem("today", "Today", "#ef6c4d", todayCount));
     catList.appendChild(specialItem("insights", "Insights", "#0ea5e9", null, "📊"));
-    state.categories.forEach(c => catList.appendChild(catItem(c, false)));
+    activeCats().forEach(c => catList.appendChild(catItem(c, false, false)));
+
+    // Archived (collapsible)
+    const arch = archivedCats();
+    const header = document.createElement("li");
+    header.className = "cat-item arch-header" + (archivedOpen ? " open" : "");
+    header.innerHTML = `
+      <span class="cat-name">📦 Archived</span>
+      <span class="cat-count">${arch.length}</span>
+      <span class="arch-chevron">⌄</span>`;
+    header.onclick = () => { archivedOpen = !archivedOpen; renderCats(); };
+    catList.appendChild(header);
+
+    if (archivedOpen) {
+      const tog = document.createElement("li");
+      tog.className = "arch-toggle";
+      tog.innerHTML = `<span>Auto-archive when all done</span>
+        <label class="switch sm"><input type="checkbox" ${state.autoArchive !== false ? "checked" : ""}/><span class="track"></span></label>`;
+      tog.querySelector("input").onchange = (ev) => {
+        state.autoArchive = ev.target.checked; save(); render();
+        toast(ev.target.checked ? "Auto-archive on" : "Auto-archive off");
+      };
+      catList.appendChild(tog);
+      if (!arch.length) {
+        const none = document.createElement("li"); none.className = "arch-none"; none.textContent = "No archived notebooks yet";
+        catList.appendChild(none);
+      } else {
+        arch.forEach(c => catList.appendChild(catItem(c, false, true)));
+      }
+    }
   }
 
   function specialItem(id, name, color, count, icon) {
@@ -1071,22 +1255,26 @@
     return li;
   }
 
-  function catItem(cat, isAll) {
+  function catItem(cat, isAll, archived) {
     const li = document.createElement("li");
-    li.className = "cat-item" + (activeCat === cat.id ? " active" : "");
-    const count = state.tasks.filter(t => (isAll || t.categoryId === cat.id) && !t.completed).length;
+    li.className = "cat-item" + (activeCat === cat.id ? " active" : "") + (archived ? " arch-item" : "");
+    const active = state.tasks.filter(t => t.categoryId === cat.id && !t.completed).length;
+    const totalN = state.tasks.filter(t => t.categoryId === cat.id).length;
     li.innerHTML = `
       <span class="cat-dot" style="background:${cat.color}"></span>
       <span class="cat-name">${esc(cat.name)}</span>
-      <span class="cat-count">${count}</span>
-      ${isAll ? "" : `<button class="cat-del" title="Delete notebook">✕</button>`}`;
+      <span class="cat-count">${archived ? totalN : active}</span>
+      ${archived
+        ? `<button class="cat-act cat-unarch" title="Unarchive notebook">↩</button><button class="cat-act cat-del" title="Delete notebook">✕</button>`
+        : `<button class="cat-act cat-arch" title="Archive notebook">📦</button><button class="cat-act cat-del" title="Delete notebook">✕</button>`}`;
     li.onclick = (e) => {
-      if (e.target.classList.contains("cat-del")) return;
+      if (e.target.closest(".cat-act")) return;
       activeCat = cat.id; render();
       document.body.classList.remove("nav-open");
     };
-    const del = li.querySelector(".cat-del");
-    if (del) del.onclick = (e) => { e.stopPropagation(); deleteCat(cat); };
+    const del = li.querySelector(".cat-del"); if (del) del.onclick = (e) => { e.stopPropagation(); deleteCat(cat); };
+    const ar = li.querySelector(".cat-arch"); if (ar) ar.onclick = (e) => { e.stopPropagation(); archiveCategory(cat.id, true); };
+    const un = li.querySelector(".cat-unarch"); if (un) un.onclick = (e) => { e.stopPropagation(); unarchiveCategory(cat.id); };
     return li;
   }
 
@@ -1249,7 +1437,10 @@
     if (!t.completed) removeNotified(t.id); // re-opened -> allow future reminder
     save(); render();
     Google.autoSync(t);
-    if (t.completed) maybeCelebrate();
+    if (t.completed) {
+      if (_justArchived && _justArchived.length) { celebrate(); toast("📦 “" + _justArchived.join("”, “") + "” all done & archived!"); }
+      else maybeCelebrate();
+    }
   }
 
   function removeNotified(id) {
@@ -1376,8 +1567,8 @@
 
   function endOfToday() { const d = new Date(); d.setHours(23, 59, 59, 999); return d.getTime(); }
   function scopeTasks() {
-    if (activeCat === "all") return state.tasks;
-    if (activeCat === "today") { const e = endOfToday(); return state.tasks.filter(t => t.deadline && new Date(t.deadline).getTime() <= e); }
+    if (activeCat === "all") return state.tasks.filter(t => !isArchived(t.categoryId));
+    if (activeCat === "today") { const e = endOfToday(); return state.tasks.filter(t => !isArchived(t.categoryId) && t.deadline && new Date(t.deadline).getTime() <= e); }
     return state.tasks.filter(t => t.categoryId === activeCat);
   }
 
@@ -2379,6 +2570,11 @@
   $("fsBannerX").onclick = () => FileStore.hideBanner();
   $("fsClose").onclick = () => $("fsModal").classList.remove("open");
   $("fsModal").onclick = (e) => { if (e.target === $("fsModal")) $("fsModal").classList.remove("open"); };
+
+  // drill-down + archived banner wiring
+  $("drillClose").onclick = () => $("drillModal").classList.remove("open");
+  $("drillModal").onclick = (e) => { if (e.target === $("drillModal")) $("drillModal").classList.remove("open"); };
+  $("archBannerRestore").onclick = () => { if (activeCat && activeCat !== "all" && activeCat !== "today" && activeCat !== "insights") unarchiveCategory(activeCat); };
   $("fsCreate").onclick = () => FileStore.create();
   $("fsOpen").onclick = () => FileStore.open();
   $("fsSaveNow").onclick = async () => { await FileStore.writeNow(); toast("Saved to file ✓"); };
@@ -2400,6 +2596,9 @@
 
     // Insights dashboard replaces the task workflow
     const isInsights = activeCat === "insights";
+    const isSpecial = isInsights || activeCat === "all" || activeCat === "today";
+    const curArchived = !isSpecial && isArchived(activeCat);
+    $("archBanner").style.display = (!isInsights && curArchived) ? "flex" : "none";
     $("addCard").style.display = isInsights ? "none" : "";
     document.querySelector(".filter-bar").style.display = isInsights ? "none" : "flex";
     statsRow.style.display = isInsights ? "none" : "flex";
@@ -2420,6 +2619,16 @@
       if (inp) inp.focus();
       focusSubFor = null;
     }
+
+    if (highlightId) {
+      const el = taskList.querySelector('.task[data-id="' + highlightId + '"]');
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flash");
+        setTimeout(() => el.classList.remove("flash"), 1800);
+      }
+      highlightId = null;
+    }
   }
 
   function renderStats() {
@@ -2430,12 +2639,17 @@
     const overdue = scope.filter(t => !t.completed && t.deadline && new Date(t.deadline) < new Date()).length;
     const pct = total ? Math.round(done / total * 100) : 0;
     statsRow.innerHTML = `
-      <div class="stat-card"><div class="num">${active}</div><div class="lbl">Active tasks</div></div>
-      <div class="stat-card"><div class="num" style="color:var(--overdue)">${overdue}</div><div class="lbl">Overdue</div></div>
-      <div class="stat-card" style="flex:1.6">
+      <div class="stat-card clickable" data-d="active"><div class="num">${active}</div><div class="lbl">Active tasks</div></div>
+      <div class="stat-card clickable" data-d="overdue"><div class="num" style="color:var(--overdue)">${overdue}</div><div class="lbl">Overdue</div></div>
+      <div class="stat-card clickable" data-d="done" style="flex:1.6">
         <div class="num">${pct}%</div><div class="lbl">${done} of ${total} completed</div>
         <div class="progress-wrap"><div class="progress-track"><div class="progress-bar" style="width:${pct}%"></div></div></div>
       </div>`;
+    const scopeName = activeCat === "all" ? "" : activeCat === "today" ? " · Today" : "";
+    const q = statsRow.querySelectorAll("[data-d]");
+    q[0].onclick = () => openDrill("Active tasks" + scopeName, scope.filter(t => !t.completed));
+    q[1].onclick = () => openDrill("Overdue tasks" + scopeName, scope.filter(t => !t.completed && t.deadline && new Date(t.deadline) < new Date()));
+    q[2].onclick = () => openDrill("Completed tasks" + scopeName, scope.filter(t => t.completed));
   }
 
   function renderInsights() {
@@ -2466,38 +2680,38 @@
     let best = 0; { const sorted = [...compDays].sort((a, b) => a - b); let run = 0, prev = null; for (const t of sorted) { run = (prev != null && t - prev === 86400000) ? run + 1 : 1; best = Math.max(best, run); prev = t; } }
 
     // by notebook & by priority
-    const byCat = state.categories.map(c => { const ct = tasks.filter(t => t.categoryId === c.id); return { name: c.name, color: c.color, total: ct.length, done: ct.filter(t => t.completed).length }; }).filter(c => c.total > 0);
+    const byCat = state.categories.map(c => { const ct = tasks.filter(t => t.categoryId === c.id); return { id: c.id, name: c.name, color: c.color, total: ct.length, done: ct.filter(t => t.completed).length }; }).filter(c => c.total > 0);
     const prio = { high: 0, med: 0, low: 0 }; tasks.filter(t => !t.completed).forEach(t => { prio[t.priority] = (prio[t.priority] || 0) + 1; });
     const prioMax = Math.max(1, prio.high, prio.med, prio.low);
     const prioColor = { high: "var(--high)", med: "var(--med)", low: "var(--low)" };
 
     const barsHtml = days.map((d, i) => {
       const c = dayCounts[i], h = Math.round(c / maxDay * 100);
-      return `<div class="bar-col"><div class="bar ${c ? "" : "zero"}" style="height:${c ? Math.max(h, 6) : 3}%">${c ? `<span>${c}</span>` : ""}</div><div class="cap">${dow[d.getDay()]}</div></div>`;
+      return `<div class="bar-col clickable" data-day="${i}"><div class="bar ${c ? "" : "zero"}" style="height:${c ? Math.max(h, 6) : 3}%">${c ? `<span>${c}</span>` : ""}</div><div class="cap">${dow[d.getDay()]}</div></div>`;
     }).join("");
 
     const catHtml = byCat.length ? byCat.map(c => {
       const p = c.total ? Math.round(c.done / c.total * 100) : 0;
-      return `<div class="bd-row"><span class="bd-dot" style="background:${c.color}"></span><span class="bd-name">${esc(c.name)}</span><div class="bd-track"><div class="bd-fill" style="width:${p}%;background:${c.color}"></div></div><span class="bd-val">${c.done}/${c.total}</span></div>`;
+      return `<div class="bd-row clickable" data-cat="${c.id}"><span class="bd-dot" style="background:${c.color}"></span><span class="bd-name">${esc(c.name)}</span><div class="bd-track"><div class="bd-fill" style="width:${p}%;background:${c.color}"></div></div><span class="bd-val">${c.done}/${c.total}</span></div>`;
     }).join("") : '<div style="color:var(--text-faint);font-size:13px">No notebooks with tasks.</div>';
 
     const prioHtml = ["high", "med", "low"].map(k => {
       const v = prio[k], p = Math.round(v / prioMax * 100);
-      return `<div class="bd-row"><span class="bd-dot" style="background:${prioColor[k]}"></span><span class="bd-name">${PRIO_LABEL[k]}</span><div class="bd-track"><div class="bd-fill" style="width:${p}%;background:${prioColor[k]}"></div></div><span class="bd-val">${v}</span></div>`;
+      return `<div class="bd-row clickable" data-prio="${k}"><span class="bd-dot" style="background:${prioColor[k]}"></span><span class="bd-name">${PRIO_LABEL[k]}</span><div class="bd-track"><div class="bd-fill" style="width:${p}%;background:${prioColor[k]}"></div></div><span class="bd-val">${v}</span></div>`;
     }).join("");
 
     $("insightsView").innerHTML = `
       <div class="kpi-row">
-        <div class="kpi"><div class="n">${active}</div><div class="l">Active tasks</div></div>
-        <div class="kpi"><div class="n">${done}</div><div class="l">Completed</div></div>
-        <div class="kpi"><div class="n" style="color:var(--overdue)">${overdue}</div><div class="l">Overdue</div></div>
-        <div class="kpi"><div class="n">${weekTotal}</div><div class="l">Done this week</div></div>
+        <div class="kpi clickable" data-drill="active"><div class="n">${active}</div><div class="l">Active tasks</div></div>
+        <div class="kpi clickable" data-drill="completed"><div class="n">${done}</div><div class="l">Completed</div></div>
+        <div class="kpi clickable" data-drill="overdue"><div class="n" style="color:var(--overdue)">${overdue}</div><div class="l">Overdue</div></div>
+        <div class="kpi clickable" data-drill="week"><div class="n">${weekTotal}</div><div class="l">Done this week</div></div>
       </div>
       <div class="ins-grid">
         <div class="ins-card">
           <h4>Completion rate</h4>
           <div class="ring-wrap">
-            <div class="ring" style="--p:${rate}" data-p="${rate}%"></div>
+            <div class="ring clickable" data-drill="completed" style="--p:${rate}" data-p="${rate}%"></div>
             <div class="ring-legend"><b>${done}</b> of <b>${total}</b> tasks done<br/><span style="color:var(--text-faint)">${active} still active</span></div>
           </div>
         </div>
@@ -2518,7 +2732,25 @@
           <h4>Active by priority</h4>
           <div class="breakdown">${prioHtml}</div>
         </div>
-      </div>`;
+      </div>
+      <div class="drill-hint">Tip: click any number, bar, or row above to see and jump to those tasks.</div>`;
+
+    // Make the dashboard numbers interactive (drill-down / navigate)
+    const iv = $("insightsView");
+    const drillSets = {
+      active: () => tasks.filter(t => !t.completed),
+      completed: () => tasks.filter(t => t.completed),
+      overdue: () => tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline) < new Date()),
+      week: () => tasks.filter(t => t.completed && t.completedAt && t.completedAt >= days[0].getTime())
+    };
+    const drillTitles = { active: "Active tasks", completed: "Completed tasks", overdue: "Overdue tasks", week: "Completed this week" };
+    iv.querySelectorAll("[data-drill]").forEach(el => { const k = el.getAttribute("data-drill"); el.onclick = () => openDrill(drillTitles[k], drillSets[k]()); });
+    iv.querySelectorAll("[data-day]").forEach(el => {
+      const i = +el.getAttribute("data-day");
+      el.onclick = () => { const s = days[i].getTime(), e2 = s + 86400000; openDrill("Completed " + days[i].toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }), tasks.filter(t => t.completed && t.completedAt >= s && t.completedAt < e2)); };
+    });
+    iv.querySelectorAll("[data-cat]").forEach(el => { el.onclick = () => { activeCat = el.getAttribute("data-cat"); render(); document.body.classList.remove("nav-open"); }; });
+    iv.querySelectorAll("[data-prio]").forEach(el => { const p = el.getAttribute("data-prio"); el.onclick = () => openDrill(PRIO_LABEL[p] + " priority (active)", tasks.filter(t => !t.completed && t.priority === p)); });
   }
 
   function taskEl(t) {
@@ -2715,7 +2947,7 @@
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      [catModal, gModal, ocrModal].forEach(mm => mm && mm.classList.remove("open"));
+      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal")].forEach(mm => mm && mm.classList.remove("open"));
       return;
     }
     const el = document.activeElement;
@@ -2835,6 +3067,7 @@
   applyTheme();
   Google.init();
   Remind.init();
+  applyAutoArchive();   // archive any notebooks already fully complete
   render();
   (async () => {
     await ServerStore.init();          // seamless mode when launched via the .bat

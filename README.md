@@ -63,6 +63,7 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 Use the **Task / Project toggle** in the add bar:
 - A **Task** has a single **deadline** (the default).
 - A **Project** has a **start** and an **end** date. Projects show two bars: a **Timeline** bar (percent of the schedule elapsed, with a "starts in / days left / ended" label) and a **Milestones** bar that **rolls up completion from its checklist** (e.g. 3/5 · 60% done). The calendar bar also fills to match milestone completion.
+- **Dependencies** 🔗 — in a project's editor, pick which projects it "**depends on**" (starts after they finish). Move or resize a project and its dependents **cascade-shift automatically** to stay after it (chained, cycle-safe, durations preserved). Linked projects show a 🔗 badge on their card and calendar bar.
 
 Both live together under their notebook and on the calendar.
 
@@ -83,7 +84,7 @@ Both live together under their notebook and on the calendar.
 ### 🗓 Calendar view
 A full calendar (in the sidebar) with **Month / Week / Agenda** modes (your choice is remembered):
 - **Month** — tasks appear as chips on their due date (colored by notebook, "+N more" on busy days); **projects render as bars that span their start→end days**, stacked into lanes like a Gantt/Google-Calendar timeline.
-- **Week** — a tall 7-day view showing every task for each day plus the project bars across the top.
+- **Week** — a Google-Calendar-style **hour grid**: an all-day strip on top (project bars + all-day tasks) and a scrollable timeline below where timed tasks sit at their exact time, with a live "now" line on today. **Drag a task block up/down to change its time (snapped to 15 min) or left/right to change its day.**
 - **Agenda** — an upcoming schedule grouped by day (next 45 days) with an **Overdue** section and Today/Tomorrow labels.
 - **Drag to reschedule** — drag a task chip onto another day to move it (its time is preserved). Drag a **project bar's edges** to change its start/end, or drag the bar body to move the whole project.
 - Navigate with ‹ / › (month or week) or jump to **Today**; today is highlighted. Click any item to jump to it (flash-highlighted); click a day to see everything on it.

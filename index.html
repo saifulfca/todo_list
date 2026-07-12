@@ -752,6 +752,35 @@
   .cal-dow > div.wtoday, .cal-dow > div.wtoday b { color: var(--accent); }
   .cal-empty-day { color: var(--text-faint); font-size: 12px; text-align: center; margin-top: 10px; }
 
+  /* week hour-grid */
+  .wk-dow { display: grid; grid-template-columns: 52px repeat(7, 1fr); gap: 0; margin-bottom: 4px; }
+  .wk-dow > div { text-align: center; }
+  .wk-allday { display: flex; align-items: stretch; margin-bottom: 6px; }
+  .wk-gutter { width: 52px; flex-shrink: 0; font-size: 9.5px; color: var(--text-faint); font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: flex-end; padding-right: 7px; }
+  .wk-allday .cal-days { gap: 6px; }
+  .wk-allday-cell { min-height: 30px; border-radius: 8px; }
+  .wk-scroll { max-height: 60vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .wk-grid { display: flex; position: relative; }
+  .wk-hours { width: 52px; flex-shrink: 0; position: relative; }
+  .wk-hour { position: relative; border-top: 1px solid var(--border); }
+  .wk-hour:first-child { border-top: none; }
+  .wk-hour span { position: absolute; top: -8px; right: 6px; font-size: 10px; color: var(--text-faint); font-weight: 600; background: var(--surface); padding: 0 2px; }
+  .wk-cols { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+  .wk-col { position: relative; border-left: 1px solid var(--border); min-height: 100%; }
+  .wk-col.wk-today { background: var(--accent-soft); }
+  .wk-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); opacity: .5; pointer-events: none; }
+  .wk-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--overdue); z-index: 4; pointer-events: none; }
+  .wk-now::before { content: ""; position: absolute; left: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--overdue); }
+  .wk-block { position: absolute; background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 11px; font-weight: 600; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; touch-action: none; box-shadow: var(--shadow); z-index: 2; }
+  .wk-block:hover { z-index: 3; box-shadow: var(--shadow-lg); }
+  .wk-block.dragging { opacity: .85; z-index: 6; cursor: grabbing; }
+  .wk-block.done { opacity: .5; text-decoration: line-through; }
+  .wk-time { color: var(--text-faint); font-weight: 700; }
+
+  .badge.dep { background: #e0f2fe; color: #0369a1; }
+  html[data-theme="dark"] .badge.dep { background: #0c3549; color: #7dd3fc; }
+  .detail-edit select[multiple] { min-height: 62px; padding: 4px; }
+
   .cal-agenda { display: flex; flex-direction: column; gap: 20px; max-width: 760px; }
   .ag-date { font-size: 13.5px; font-weight: 750; margin-bottom: 9px; display: flex; align-items: center; gap: 9px; }
   .ag-rel { font-size: 10.5px; font-weight: 700; color: #fff; background: var(--accent); padding: 2px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .4px; }
@@ -1169,6 +1198,7 @@
       recur: t.recur || "none",
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       tags: Array.isArray(t.tags) ? t.tags : [],
+      deps: Array.isArray(t.deps) ? t.deps.filter(x => typeof x === "string") : [],
       order: typeof t.order === "number" ? t.order : (t.createdAt || Date.now()) + i,
       _spawned: !!t._spawned,
       google: t.google && typeof t.google === "object"
@@ -1461,6 +1491,7 @@
       recur: fields.recur || "none",
       subtasks: fields.subtasks || [],
       tags: fields.tags || [],
+      deps: fields.deps || [],
       order: minOrder() - 1,
       _spawned: false,
       google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
@@ -2986,31 +3017,91 @@
   function calWeekStart(d) { const x = startOfDay(d); x.setDate(x.getDate() - x.getDay()); return x; }
   function calItemsAll() { return state.tasks.filter(t => !isArchived(t.categoryId)); }
 
+  // ── project dependencies ──
+  function byId(id) { return state.tasks.find(x => x.id === id); }
+  function projMinStartMs(t) {
+    if (!Array.isArray(t.deps) || !t.deps.length) return null;
+    let max = null;
+    t.deps.forEach(d => { const p = byId(d); if (p && p.deadline) { const e = new Date(p.deadline).getTime(); if (max == null || e > max) max = e; } });
+    return max;
+  }
+  function clampToDeps(t) {
+    const min = projMinStartMs(t);
+    if (min == null || !t.start) return;
+    const s = new Date(t.start).getTime();
+    if (s < min) { const dur = new Date(t.deadline).getTime() - s; t.start = toLocalInput(new Date(min)); t.deadline = toLocalInput(new Date(min + dur)); }
+  }
+  // Shift dependents forward so each starts on/after its predecessors' latest end. Returns shifted ids.
+  function cascadeSchedule(changedIds) {
+    const shifted = []; const queue = changedIds.slice(); let guard = 0;
+    while (queue.length && guard++ < 2000) {
+      const pid = queue.shift();
+      state.tasks.forEach(s => {
+        if (s.type !== "project" || !Array.isArray(s.deps) || !s.deps.includes(pid) || !s.start) return;
+        const min = projMinStartMs(s); if (min == null) return;
+        const sStart = new Date(s.start).getTime();
+        if (sStart < min) {
+          const dur = new Date(s.deadline).getTime() - sStart;
+          s.start = toLocalInput(new Date(min)); s.deadline = toLocalInput(new Date(min + dur));
+          if (!shifted.includes(s.id)) shifted.push(s.id);
+          queue.push(s.id);
+        }
+      });
+    }
+    return shifted;
+  }
+  function wouldCycle(projId, newDepId) {
+    if (projId === newDepId) return true;
+    const seen = new Set(); const stack = [newDepId];
+    while (stack.length) {
+      const cur = stack.pop();
+      if (cur === projId) return true;
+      if (seen.has(cur)) continue; seen.add(cur);
+      const c = byId(cur); if (c && Array.isArray(c.deps)) c.deps.forEach(d => stack.push(d));
+    }
+    return false;
+  }
+  // Apply new dates to a project, clamp to its own deps, cascade dependents, persist. Returns shifted ids.
+  function setProjectDates(t, start, deadline) {
+    t.start = start; t.deadline = deadline;
+    clampToDeps(t);
+    const shifted = cascadeSchedule([t.id]);
+    removeNotified(t.id);
+    save(); Google.autoSync(t);
+    shifted.forEach(sid => { const s = byId(sid); if (s) Google.autoSync(s); });
+    return shifted;
+  }
+
   // ── drag-to-reschedule ──
   function moveTaskToDay(id, dayTs) {
-    const t = state.tasks.find(x => x.id === id); if (!t) return;
+    const t = byId(id); if (!t) return;
     const nd = new Date(dayTs);
     if (t.deadline) { const o = new Date(t.deadline); nd.setHours(o.getHours(), o.getMinutes(), 0, 0); } else nd.setHours(17, 0, 0, 0);
+    let shifted = [];
     if (t.type === "project" && t.start) {
       const dur = new Date(t.deadline).getTime() - new Date(t.start).getTime();
-      updateTask(id, { start: toLocalInput(nd), deadline: toLocalInput(new Date(nd.getTime() + Math.max(0, dur))) });
+      shifted = setProjectDates(t, toLocalInput(nd), toLocalInput(new Date(nd.getTime() + Math.max(0, dur))));
     } else { updateTask(id, { deadline: toLocalInput(nd) }); }
-    toast("Rescheduled → " + fmtDate(nd));
+    toast("Rescheduled → " + fmtDate(nd) + (shifted.length ? " · 🔗 shifted " + shifted.length : ""));
     renderCalendar();
   }
   function resizeProject(id, which, dayDelta) {
-    const t = state.tasks.find(x => x.id === id); if (!t || t.type !== "project") return;
+    const t = byId(id); if (!t || t.type !== "project") return;
     const s = new Date(t.start), e = new Date(t.deadline);
-    if (which === "move") { s.setDate(s.getDate() + dayDelta); e.setDate(e.getDate() + dayDelta); updateTask(id, { start: toLocalInput(s), deadline: toLocalInput(e) }); }
-    else if (which === "start") { s.setDate(s.getDate() + dayDelta); if (s <= e) updateTask(id, { start: toLocalInput(s) }); }
-    else { e.setDate(e.getDate() + dayDelta); if (e >= s) updateTask(id, { deadline: toLocalInput(e) }); }
+    if (which === "move") { s.setDate(s.getDate() + dayDelta); e.setDate(e.getDate() + dayDelta); }
+    else if (which === "start") { s.setDate(s.getDate() + dayDelta); if (s > e) return renderCalendar(); }
+    else { e.setDate(e.getDate() + dayDelta); if (e < s) return renderCalendar(); }
+    const shifted = setProjectDates(t, toLocalInput(s), toLocalInput(e));
+    if (shifted.length) toast("🔗 Shifted " + shifted.length + " linked project" + (shifted.length > 1 ? "s" : ""));
     renderCalendar();
   }
+  function fmtHour(h) { const ap = h < 12 ? "AM" : "PM"; const hr = h % 12 === 0 ? 12 : h % 12; return hr + " " + ap; }
 
   function projBarHtml(p, left, width, top, contL, contR) {
     const cat = state.categories.find(c => c.id === p.categoryId) || { color: "#0ea5e9" };
     const comp = projectCompletion(p).pct;
-    return `<div class="cal-proj ${p.completed ? "done" : ""} ${contL ? "cont-l" : ""} ${contR ? "cont-r" : ""}" data-id="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))}) · ${comp}% done" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;background:${cat.color}">${contL ? "" : `<span class="cal-proj-h l"></span>`}<span class="cal-proj-label">${contL ? "" : "📊 "}${esc(p.title)}</span>${contR ? "" : `<span class="cal-proj-h r"></span>`}<span class="cal-proj-fill" style="width:${comp}%"></span></div>`;
+    const dep = (p.deps && p.deps.length) ? "🔗 " : "";
+    return `<div class="cal-proj ${p.completed ? "done" : ""} ${contL ? "cont-l" : ""} ${contR ? "cont-r" : ""}" data-id="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))}) · ${comp}% done${p.deps && p.deps.length ? " · depends on " + p.deps.length : ""}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;background:${cat.color}">${contL ? "" : `<span class="cal-proj-h l"></span>`}<span class="cal-proj-label">${contL ? "" : "📊 "}${dep}${esc(p.title)}</span>${contR ? "" : `<span class="cal-proj-h r"></span>`}<span class="cal-proj-fill" style="width:${comp}%"></span></div>`;
   }
   function chipHtml(t) {
     const cat = state.categories.find(c => c.id === t.categoryId) || { color: "#888" };
@@ -3102,20 +3193,86 @@
     const week = []; for (let i = 0; i < 7; i++) { const d = new Date(ws); d.setDate(d.getDate() + i); week.push(d); }
     const items = calItemsAll();
     const projects = items.filter(t => t.type === "project" && t.start && t.deadline);
-    const today = new Date(); const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; const BAR = 22;
+    const today = new Date(); const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; const BAR = 22; const HOUR_H = 44;
+    const isMidnight = t => { const d = new Date(t.deadline); return d.getHours() === 0 && d.getMinutes() === 0; };
+
+    // header
+    let html = `<div class="cal-dow wk-dow">${week.map((d, i) => `<div class="${sameDay(d, today) ? "wtoday" : ""}">${dow[i]}<br><b>${d.getDate()}</b></div>`).join("")}</div>`;
+
+    // all-day strip: project bars + all-day (midnight) tasks
     const { segs, laneCount } = weekSegments(week, projects);
-    const padTop = 14 + laneCount * BAR;
-    let html = `<div class="cal-dow">${week.map((d, i) => `<div class="${sameDay(d, today) ? "wtoday" : ""}">${dow[i]}<br><b>${d.getDate()}</b></div>`).join("")}</div>`;
-    html += `<div class="cal-grid"><div class="cal-week cal-week-tall">`;
-    segs.forEach(seg => { html += projBarHtml(seg.item, seg.startCol / 7 * 100, (seg.endCol - seg.startCol + 1) / 7 * 100, 8 + seg.lane * BAR, seg.contL, seg.contR); });
+    const stripPad = 6 + laneCount * BAR;
+    html += `<div class="wk-allday"><div class="wk-gutter">all-day</div><div class="cal-grid" style="flex:1"><div class="cal-week">`;
+    segs.forEach(seg => { html += projBarHtml(seg.item, seg.startCol / 7 * 100, (seg.endCol - seg.startCol + 1) / 7 * 100, 4 + seg.lane * BAR, seg.contL, seg.contR); });
     html += `<div class="cal-days">`;
     week.forEach(day => {
+      const allday = items.filter(t => t.type !== "project" && t.deadline && sameDay(new Date(t.deadline), day) && isMidnight(t));
+      html += `<div class="cal-day wk-allday-cell ${sameDay(day, today) ? "today" : ""}" data-day="${startOfDay(day).getTime()}" style="padding-top:${stripPad}px;min-height:${stripPad + 6}px">${allday.map(chipHtml).join("")}</div>`;
+    });
+    html += `</div></div></div></div>`;
+
+    // hour grid
+    html += `<div class="wk-scroll"><div class="wk-grid" style="height:${24 * HOUR_H}px"><div class="wk-hours">`;
+    for (let h = 0; h < 24; h++) html += `<div class="wk-hour" style="height:${HOUR_H}px"><span>${fmtHour(h)}</span></div>`;
+    html += `</div><div class="wk-cols">`;
+    week.forEach((day, ci) => {
       const isToday = sameDay(day, today);
-      const dayTasks = items.filter(t => t.type !== "project" && t.deadline && sameDay(new Date(t.deadline), day)).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-      html += `<div class="cal-day cal-day-tall ${isToday ? "today" : ""}" data-day="${startOfDay(day).getTime()}" style="padding-top:${padTop}px">${dayTasks.map(chipHtml).join("") || `<div class="cal-empty-day">No tasks</div>`}</div>`;
+      const timed = items.filter(t => t.type !== "project" && t.deadline && sameDay(new Date(t.deadline), day) && !isMidnight(t)).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+      const BLOCKH = 34; const laneBottom = [];
+      const placed = timed.map(t => {
+        const dt = new Date(t.deadline); const top = (dt.getHours() * 60 + dt.getMinutes()) / 60 * HOUR_H;
+        let lane = 0; while (lane < laneBottom.length && laneBottom[lane] > top + 1) lane++;
+        laneBottom[lane] = top + BLOCKH; return { t, top, lane };
+      });
+      const lc = Math.max(1, laneBottom.length);
+      let col = `<div class="wk-col ${isToday ? "wk-today" : ""}" data-day="${startOfDay(day).getTime()}">`;
+      for (let h = 1; h < 24; h++) col += `<div class="wk-line" style="top:${h * HOUR_H}px"></div>`;
+      if (isToday) col += `<div class="wk-now" style="top:${(today.getHours() * 60 + today.getMinutes()) / 60 * HOUR_H}px"></div>`;
+      placed.forEach(pl => {
+        const t = pl.t; const cat = state.categories.find(c => c.id === t.categoryId) || { color: "#888" };
+        const w = 100 / lc, left = pl.lane * w;
+        col += `<div class="wk-block ${t.completed ? "done" : ""}" data-id="${t.id}" title="${esc(t.title)}" style="top:${pl.top}px;height:${BLOCKH}px;left:calc(${left}% + 1px);width:calc(${w}% - 2px);border-left-color:${cat.color}"><span class="wk-time">${fmtTime(new Date(t.deadline))}</span> ${esc(t.title)}</div>`;
+      });
+      col += `</div>`; html += col;
     });
     html += `</div></div></div>`;
     body.innerHTML = html;
+
+    wireWeekGrid(body, week, HOUR_H);
+    const scroller = body.querySelector(".wk-scroll");
+    if (scroller) { const h = week.some(d => sameDay(d, today)) ? today.getHours() : 8; scroller.scrollTop = Math.max(0, h * HOUR_H - 50); }
+  }
+
+  function wireWeekGrid(body, week, HOUR_H) {
+    const cols = body.querySelector(".wk-cols"); if (!cols) return;
+    body.querySelectorAll(".wk-col").forEach(col => {
+      col.addEventListener("click", e => { if (e.target === col || e.target.classList.contains("wk-line")) openDayDrill(+col.getAttribute("data-day")); });
+    });
+    body.querySelectorAll(".wk-block").forEach(block => {
+      const id = block.getAttribute("data-id");
+      block.addEventListener("pointerdown", e => {
+        if (e.button && e.button !== 0) return;
+        e.preventDefault();
+        const x0 = e.clientX, y0 = e.clientY, cw = cols.clientWidth / 7; let moved = false;
+        const move = ev => { const dx = ev.clientX - x0, dy = ev.clientY - y0; if (Math.abs(dx) > 4 || Math.abs(dy) > 4) { moved = true; block.classList.add("dragging"); block.style.transform = `translate(${dx}px,${dy}px)`; } };
+        const up = ev => {
+          document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up);
+          block.classList.remove("dragging"); block.style.transform = "";
+          if (!moved) { jumpToTask(id); return; }
+          const t = byId(id); if (!t) return;
+          const dt = new Date(t.deadline);
+          let ci = week.findIndex(d => sameDay(d, dt)); if (ci < 0) ci = 0;
+          const ni = Math.min(6, Math.max(0, ci + Math.round((ev.clientX - x0) / cw)));
+          let mins = dt.getHours() * 60 + dt.getMinutes() + Math.round((ev.clientY - y0) / HOUR_H * 60);
+          mins = Math.round(mins / 15) * 15; mins = Math.min(24 * 60 - 15, Math.max(0, mins));
+          const nd = new Date(week[ni]); nd.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+          updateTask(id, { deadline: toLocalInput(nd) });
+          toast("Moved → " + fmtDate(nd) + " " + fmtTime(nd));
+          renderCalendar();
+        };
+        document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+      });
+    });
   }
 
   function calBodyAgenda(body) {
@@ -3235,6 +3392,7 @@
             ${isProject
               ? (rangeLabel(t) ? `<span class="badge range">🗓 ${esc(rangeLabel(t))}</span>` : "")
               : (di ? `<span class="badge date ${di.cls}">🕒 ${esc(di.txt)}</span>` : "")}
+            ${isProject && t.deps && t.deps.length ? `<span class="badge dep" title="Starts after ${t.deps.length} project(s) finish">🔗 after ${t.deps.length}</span>` : ""}
             ${!isProject && t.recur !== "none" ? `<span class="badge recur">🔁 ${RECUR_LABEL[t.recur]}</span>` : ""}
             ${subTotal ? `<span class="badge sub">☑ ${subDone}/${subTotal}</span>` : ""}
             ${catBadge}
@@ -3292,6 +3450,10 @@
           <div class="field">
             <label>End</label>
             <input type="datetime-local" data-edit="deadline" value="${t.deadline}" />
+          </div>
+          <div class="field" style="flex:1;min-width:190px">
+            <label>Depends on (starts after these finish)</label>
+            <select multiple data-deps size="3">${state.tasks.filter(x => x.type === "project" && x.id !== t.id).map(p => `<option value="${p.id}" ${t.deps.includes(p.id) ? "selected" : ""}>${esc(p.title)}</option>`).join("") || `<option disabled>No other projects yet</option>`}</select>
           </div>` : `
           <div class="field">
             <label>Deadline</label>
@@ -3366,9 +3528,18 @@
         if (f === "tags") updateTask(t.id, { tags: el.value.split(",").map(s => s.trim()).filter(Boolean) });
         else if (f === "deadline") updateTask(t.id, { deadline: el.value || "" });
         else updateTask(t.id, { [f]: el.value });
+        if (isProject && (f === "start" || f === "deadline")) { clampToDeps(t); const sh = cascadeSchedule([t.id]); if (sh.length) { save(); toast("🔗 Shifted " + sh.length + " linked project" + (sh.length > 1 ? "s" : "")); } }
         render();
       };
     });
+    const depsSel = li.querySelector("[data-deps]");
+    if (depsSel) depsSel.onchange = () => {
+      const chosen = Array.from(depsSel.selectedOptions).map(o => o.value).filter(v => v && !wouldCycle(t.id, v));
+      t.deps = chosen; clampToDeps(t);
+      const sh = cascadeSchedule([t.id]);
+      save(); render();
+      toast("Dependencies updated" + (sh.length ? " · shifted " + sh.length : ""));
+    };
 
     // drag & drop (manual mode, active tasks)
     if (state.sortMode === "manual" && !t.completed) {

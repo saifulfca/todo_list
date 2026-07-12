@@ -469,6 +469,30 @@
   #fileBtn.linked { background: var(--low-bg); color: var(--low); border-color: var(--low); }
   .g-status.saving .sdot { background: var(--med); }
 
+  .fs-banner {
+    display: flex; align-items: center; gap: 13px;
+    background: linear-gradient(135deg, var(--accent-soft), var(--surface));
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; margin-bottom: 18px; box-shadow: var(--shadow);
+    animation: pop .3s ease;
+  }
+  .fsb-icon { font-size: 22px; flex-shrink: 0; }
+  .fsb-text { flex: 1; font-size: 13px; color: var(--text-soft); line-height: 1.45; }
+  .fsb-text b { color: var(--text); }
+  .fsb-link {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 8px 14px; font-weight: 650; font-size: 13px; cursor: pointer;
+    font-family: var(--font); white-space: nowrap; flex-shrink: 0; transition: filter .15s;
+  }
+  .fsb-link:hover { filter: brightness(1.08); }
+  .fsb-x { background: none; border: none; color: var(--text-faint); font-size: 15px; cursor: pointer; padding: 4px 6px; border-radius: 6px; flex-shrink: 0; }
+  .fsb-x:hover { background: var(--surface-2); color: var(--text); }
+  @media (max-width: 720px) { .fs-banner { flex-wrap: wrap; } .fsb-text { flex-basis: 100%; } }
+
+  /* saved-time indicator */
+  .fs-saved { font-size: 11.5px; color: var(--text-faint); font-weight: 600; text-align: center; margin: -6px 0 14px; }
+  .fs-saved b { color: var(--low); }
+
   /* ---------- Scan button + OCR ---------- */
   .scan-btn {
     display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
@@ -672,6 +696,14 @@
 
     <div class="content">
       <div class="content-inner">
+        <!-- first-run: nudge to save to a file -->
+        <div class="fs-banner" id="fsBanner" style="display:none">
+          <span class="fsb-icon">💾</span>
+          <div class="fsb-text"><b>Keep your tasks safe</b> — save them to a file on your PC so they survive clearing browsing data.</div>
+          <button class="fsb-link" id="fsBannerLink">Save to a file</button>
+          <button class="fsb-x" id="fsBannerX" title="Not now">✕</button>
+        </div>
+
         <!-- stats -->
         <div class="stats-row" id="statsRow"></div>
 
@@ -851,6 +883,7 @@
     <div class="modal">
       <h3>💾 Save data to a file</h3>
       <div class="g-status" id="fsStatus"><span class="sdot"></span><span id="fsStatusText">Not linked to a file</span></div>
+      <div class="fs-saved" id="fsSaved" style="display:none"></div>
       <p class="fs-desc">Link a file on your PC and TaskNest will <b>auto-save every change to it</b>. Unlike normal browser storage, this file <b>survives clearing your browsing data</b> — your tasks stay safe on your disk. If you ever lose the app's memory, just <b>Open</b> that file to restore everything.</p>
       <div id="fsButtons">
         <button class="btn-primary" id="fsCreate" style="width:100%;margin-bottom:8px">📁 Create / choose a data file</button>
@@ -2114,6 +2147,7 @@
     handle: null,
     needsReconnect: false,
     saveTimer: null,
+    lastSaved: null,
 
     async init() {
       if (!this.supported) { this.updateUI(); return; }
@@ -2127,6 +2161,7 @@
         }
       } catch (e) {}
       this.updateUI();
+      this.maybePrompt();
     },
 
     openModal() {
@@ -2134,6 +2169,11 @@
       $("fsButtons").style.display = this.supported ? "block" : "none";
       this.updateUI();
       $("fsModal").classList.add("open");
+    },
+
+    savedLabel() {
+      if (!this.lastSaved) return "";
+      return new Date(this.lastSaved).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
     },
 
     updateUI() {
@@ -2144,10 +2184,19 @@
       if (stx) stx.textContent = !this.supported ? "Not supported in this browser"
         : this.needsReconnect ? "Linked to " + name + " — click Reconnect"
         : linked ? "Auto-saving to " + name : "Not linked to a file";
+
+      const saved = $("fsSaved");
+      if (saved) {
+        if (linked && !this.needsReconnect && this.lastSaved) {
+          saved.style.display = "block";
+          saved.innerHTML = "<b>Saved ✓</b> last saved at " + this.savedLabel();
+        } else { saved.style.display = "none"; }
+      }
+
       const sn = $("fsSaveNow"), ul = $("fsUnlink");
       if (sn) sn.style.display = linked && !this.needsReconnect ? "inline-block" : "none";
       if (ul) ul.style.display = linked ? "inline-block" : "none";
-      const cr = $("fsCreate"), op = $("fsOpen");
+      const cr = $("fsCreate");
       if (this.needsReconnect && cr) { cr.textContent = "🔗 Reconnect data file"; }
       else if (cr) { cr.textContent = "📁 Create / choose a data file"; }
 
@@ -2157,7 +2206,19 @@
         fb.textContent = !this.supported ? "💾 Save to a file"
           : this.needsReconnect ? "🔗 Reconnect file"
           : linked ? "💾 Saving: " + name : "💾 Save to a file";
+        fb.title = linked && this.lastSaved ? ("Auto-saving to " + name + " · last saved " + this.savedLabel())
+          : "Save your data to a file on this PC (survives clearing browsing data)";
       }
+    },
+
+    maybePrompt() {
+      if (!this.supported || this.handle) return;
+      try { if (localStorage.getItem("tasknest.fsPrompted")) return; } catch (e) {}
+      const b = $("fsBanner"); if (b) b.style.display = "flex";
+    },
+    hideBanner() {
+      const b = $("fsBanner"); if (b) b.style.display = "none";
+      try { localStorage.setItem("tasknest.fsPrompted", "1"); } catch (e) {}
     },
 
     async ensureWrite() {
@@ -2181,6 +2242,7 @@
         await idbSet("handle", h);
         await this.writeNow();
         toast("Linked ✓ auto-saving to " + h.name);
+        this.hideBanner();
         this.updateUI();
         $("fsModal").classList.remove("open");
       } catch (e) { if (e.name !== "AbortError") toast("⚠ " + (e.message || "Could not create file")); }
@@ -2197,6 +2259,7 @@
         await this.loadFromFile(false);
         render();
         toast("Opened " + h.name + " — auto-saving here now");
+        this.hideBanner();
         this.updateUI();
         $("fsModal").classList.remove("open");
       } catch (e) { if (e.name !== "AbortError") toast("⚠ " + (e.message || "Could not open file")); }
@@ -2244,8 +2307,10 @@
         const w = await this.handle.createWritable();
         await w.write(JSON.stringify(state, null, 2));
         await w.close();
+        this.lastSaved = Date.now();
         const st = $("fsStatus");
         if (st) { st.classList.add("saving"); setTimeout(() => st.classList.remove("saving"), 400); }
+        this.updateUI();
       } catch (e) { /* keep silent; localStorage still has the data */ }
     },
 
@@ -2259,6 +2324,8 @@
   };
 
   $("fileBtn").onclick = () => FileStore.openModal();
+  $("fsBannerLink").onclick = () => { FileStore.hideBanner(); FileStore.openModal(); };
+  $("fsBannerX").onclick = () => FileStore.hideBanner();
   $("fsClose").onclick = () => $("fsModal").classList.remove("open");
   $("fsModal").onclick = (e) => { if (e.target === $("fsModal")) $("fsModal").classList.remove("open"); };
   $("fsCreate").onclick = () => FileStore.create();

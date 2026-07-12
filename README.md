@@ -62,7 +62,7 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 ### Tasks & Projects 📊
 Use the **Task / Project toggle** in the add bar:
 - A **Task** has a single **deadline** (the default).
-- A **Project** has a **start** and an **end** date. Projects show a live **time-progress bar** (percent of the timeline elapsed) with a "starts in / days left / ended" label, a date range, and a distinct blue accent. Use the checklist as project milestones.
+- A **Project** has a **start** and an **end** date. Projects show two bars: a **Timeline** bar (percent of the schedule elapsed, with a "starts in / days left / ended" label) and a **Milestones** bar that **rolls up completion from its checklist** (e.g. 3/5 · 60% done). The calendar bar also fills to match milestone completion.
 
 Both live together under their notebook and on the calendar.
 
@@ -81,11 +81,12 @@ Both live together under their notebook and on the calendar.
 - **Clear completed** — tidy a view in one click (with an **Undo**).
 
 ### 🗓 Calendar view
-A full **month calendar** (in the sidebar) that shows your whole plan at a glance:
-- **Tasks** appear as chips on their due date, colored by notebook (with "+N more" when a day is busy).
-- **Projects** render as **bars that span across their start→end days** — including across week boundaries — stacked into lanes like a Gantt/Google-Calendar timeline.
-- Navigate months with ‹ / › or jump to **Today**; today's cell is highlighted.
-- Click any **task or project** to jump to it (and flash-highlight it); click a **day** to see everything happening that day.
+A full calendar (in the sidebar) with **Month / Week / Agenda** modes (your choice is remembered):
+- **Month** — tasks appear as chips on their due date (colored by notebook, "+N more" on busy days); **projects render as bars that span their start→end days**, stacked into lanes like a Gantt/Google-Calendar timeline.
+- **Week** — a tall 7-day view showing every task for each day plus the project bars across the top.
+- **Agenda** — an upcoming schedule grouped by day (next 45 days) with an **Overdue** section and Today/Tomorrow labels.
+- **Drag to reschedule** — drag a task chip onto another day to move it (its time is preserved). Drag a **project bar's edges** to change its start/end, or drag the bar body to move the whole project.
+- Navigate with ‹ / › (month or week) or jump to **Today**; today is highlighted. Click any item to jump to it (flash-highlighted); click a day to see everything on it.
 
 ### 📊 Insights dashboard
 A dedicated **Insights** view (in the sidebar) with:

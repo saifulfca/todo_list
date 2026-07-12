@@ -1,5 +1,5 @@
 /* TaskNest service worker — offline app shell caching */
-const CACHE = "tasknest-v1";
+const CACHE = "tasknest-v2";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -23,6 +23,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   // Let cross-origin requests (CDN scripts, Google APIs) go straight to the network.
   if (url.origin !== self.location.origin) return;
+  // Never cache the local data API — always hit the launcher for live data.
+  if (url.pathname.startsWith("/api/")) return;
 
   event.respondWith(
     caches.match(req).then((cached) => {

@@ -991,6 +991,7 @@
   function save() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
     catch (e) { toast("⚠ Could not save — storage may be full"); }
+    if (typeof ServerStore !== "undefined" && ServerStore.active) ServerStore.scheduleWrite();
     if (typeof FileStore !== "undefined" && FileStore.handle) FileStore.scheduleWrite();
   }
 
@@ -2323,7 +2324,57 @@
     }
   };
 
-  $("fileBtn").onclick = () => FileStore.openModal();
+  // ---------- Local launcher (PowerShell server) storage — fully seamless ----------
+  // When the app is opened via "Start TaskNest.bat", it's served from http://localhost
+  // and this store reads/writes tasknest-data.json through the launcher. The data
+  // lives on disk (not in the browser), so clearing browsing data changes nothing.
+  const ServerStore = {
+    active: false,
+    saveTimer: null,
+    async init() {
+      if (location.protocol !== "http:" && location.protocol !== "https:") return; // not file://
+      try {
+        const res = await fetch("api/data", { cache: "no-store" });
+        if (!res.ok) return;
+        this.active = true;
+        const text = await res.text();
+        if (text && text.trim()) {
+          const data = JSON.parse(text);
+          if (data.categories && data.tasks) {
+            applyLoadedData(data); activeCat = "all"; expanded.clear(); applyTheme(); render();
+          }
+        } else {
+          this.writeNow(); // empty data file: seed it with current state
+        }
+        this.updateUI();
+      } catch (e) { /* not launched via the local server — normal mode */ }
+    },
+    scheduleWrite() {
+      if (!this.active) return;
+      clearTimeout(this.saveTimer);
+      this.saveTimer = setTimeout(() => this.writeNow(), 500);
+    },
+    async writeNow() {
+      if (!this.active) return;
+      try { await fetch("api/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state) }); }
+      catch (e) { /* keep silent; localStorage still holds a copy */ }
+    },
+    updateUI() {
+      if (!this.active) return;
+      const b = $("fsBanner"); if (b) b.style.display = "none";
+      const fb = $("fileBtn");
+      if (fb) {
+        fb.classList.add("linked");
+        fb.textContent = "💾 Saved to disk (auto)";
+        fb.title = "Auto-saving to tasknest-data.json via the TaskNest launcher — survives clearing browsing data";
+      }
+    }
+  };
+
+  $("fileBtn").onclick = () => {
+    if (ServerStore.active) { toast("✓ Your data auto-saves to tasknest-data.json — it survives clearing browsing data"); return; }
+    FileStore.openModal();
+  };
   $("fsBannerLink").onclick = () => { FileStore.hideBanner(); FileStore.openModal(); };
   $("fsBannerX").onclick = () => FileStore.hideBanner();
   $("fsClose").onclick = () => $("fsModal").classList.remove("open");
@@ -2785,7 +2836,10 @@
   Google.init();
   Remind.init();
   render();
-  FileStore.init();
+  (async () => {
+    await ServerStore.init();          // seamless mode when launched via the .bat
+    if (!ServerStore.active) FileStore.init();  // browser mode: link-a-file fallback
+  })();
 })();
 </script>
 </body>

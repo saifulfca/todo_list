@@ -9,11 +9,18 @@ A polished, single-file to-do app that runs **entirely offline in your browser**
 **Use it online (recommended):** once GitHub Pages finishes its first deploy, the app is live at
 **https://saifulfca.github.io/todo_list/** — this is required for Google sign-in, reminders, and installing it as an app.
 
-**Or run it locally:**
-1. Download or clone this repo.
-2. Double-click **`index.html`** (or open it in any modern browser).
+**Run it seamlessly on Windows (best for local use — no installs, data never lost):**
+1. Download this repo (**Code → Download ZIP**) and unzip it to a folder.
+2. Double-click **`Start TaskNest.bat`**.
+3. Your browser opens the app and it just works. Your tasks are saved to **`tasknest-data.json`** in that folder, and reload automatically every time.
 
-That's it. All your data is saved automatically in the browser's local storage on your machine.
+Because your data lives in a real file on disk (managed by the launcher, not the browser), **clearing your browsing data has no effect at all** — the app reopens with everything intact, no re-linking, no clicks. The launcher uses only Windows' built-in PowerShell (no Node, Python, or any install). Keep the small black window open while you use the app; close it to stop.
+
+**Or just open the file (simplest):**
+1. Download or clone this repo.
+2. Double-click **`index.html`** in Chrome or Edge.
+
+This works, but data is kept in the browser's local storage (wiped if you clear browsing data). To keep it safe in this mode, use **💾 Save to a file** (see below).
 
 ## Install it as an app (PWA)
 

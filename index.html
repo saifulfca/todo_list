@@ -781,6 +781,24 @@
   html[data-theme="dark"] .badge.dep { background: #0c3549; color: #7dd3fc; }
   .detail-edit select[multiple] { min-height: 62px; padding: 4px; }
 
+  /* week block resize handle */
+  .wk-block { padding-bottom: 5px; }
+  .wk-block-h { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; touch-action: none; }
+  .wk-block-h::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); bottom: 2px; width: 20px; height: 2px; border-radius: 2px; background: rgba(0,0,0,.18); }
+  html[data-theme="dark"] .wk-block-h::after { background: rgba(255,255,255,.3); }
+
+  /* dependency arrows */
+  .cal-grid { position: relative; }
+  .cal-arrows { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 5; overflow: visible; }
+  .dep-arrow { fill: none; stroke: #9aa3b2; stroke-width: 1.6; opacity: .7; }
+  .dep-arrow.crit { stroke: #ef4444; stroke-width: 2.4; opacity: 1; }
+
+  /* critical path */
+  .cal-crit { border: none; background: none; color: var(--text-soft); font-family: var(--font); font-size: 12.5px; font-weight: 650; padding: 6px 12px; border-radius: 8px; cursor: pointer; margin-left: 8px; border: 1px solid var(--border); }
+  .cal-crit.active { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
+  html[data-theme="dark"] .cal-crit.active { background: #3a2e17; color: #fbbf24; }
+  .cal-proj.crit { box-shadow: 0 0 0 2px #ef4444, 0 2px 6px rgba(0,0,0,.3); z-index: 4; }
+
   .cal-agenda { display: flex; flex-direction: column; gap: 20px; max-width: 760px; }
   .ag-date { font-size: 13.5px; font-weight: 750; margin-bottom: 9px; display: flex; align-items: center; gap: 9px; }
   .ag-rel { font-size: 10.5px; font-weight: 700; color: #fff; background: var(--accent); padding: 2px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .4px; }
@@ -1157,6 +1175,7 @@
   let addType = "task";       // add-card mode: "task" or "project"
   let calMonth = new Date();  // anchor date shown in the Calendar view
   let calDragId = null;       // task id being dragged on the calendar
+  let _critSet = new Set();   // project ids on the critical path (when highlighted)
 
   function seed() {
     return {
@@ -1173,7 +1192,8 @@
       notified: [],
       autoArchive: true,
       archivedOpen: false,
-      calMode: "month"
+      calMode: "month",
+      calCritical: false
     };
   }
 
@@ -1199,6 +1219,7 @@
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       tags: Array.isArray(t.tags) ? t.tags : [],
       deps: Array.isArray(t.deps) ? t.deps.filter(x => typeof x === "string") : [],
+      durationMin: (typeof t.durationMin === "number" && t.durationMin > 0) ? t.durationMin : 0,
       order: typeof t.order === "number" ? t.order : (t.createdAt || Date.now()) + i,
       _spawned: !!t._spawned,
       google: t.google && typeof t.google === "object"
@@ -1224,6 +1245,7 @@
       data.autoArchive = data.autoArchive !== false;
       data.archivedOpen = !!data.archivedOpen;
       data.calMode = ["month", "week", "agenda"].includes(data.calMode) ? data.calMode : "month";
+      data.calCritical = !!data.calCritical;
       normalizeCats(data.categories);
       data.tasks = data.tasks.map(normalizeTask);
       return data;
@@ -1341,6 +1363,7 @@
     data.autoArchive = data.autoArchive !== false;
     data.archivedOpen = !!data.archivedOpen;
     data.calMode = ["month", "week", "agenda"].includes(data.calMode) ? data.calMode : "month";
+    data.calCritical = !!data.calCritical;
     normalizeCats(data.categories);
     data.tasks = (data.tasks || []).map(normalizeTask);
     state = data;
@@ -1492,6 +1515,7 @@
       subtasks: fields.subtasks || [],
       tags: fields.tags || [],
       deps: fields.deps || [],
+      durationMin: fields.durationMin || 0,
       order: minOrder() - 1,
       _spawned: false,
       google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
@@ -3096,12 +3120,43 @@
     renderCalendar();
   }
   function fmtHour(h) { const ap = h < 12 ? "AM" : "PM"; const hr = h % 12 === 0 ? 12 : h % 12; return hr + " " + ap; }
+  function fmtDur(m) { const h = Math.floor(m / 60), mm = m % 60; return (h ? h + "h" : "") + (mm ? (h ? " " : "") + mm + "m" : (h ? "" : "0m")); }
+
+  // Critical path: the longest chain of dependent projects (by total duration).
+  function computeCriticalPath() {
+    const projs = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
+    if (projs.length < 2) return new Set();
+    const dur = t => Math.max(0, new Date(t.deadline).getTime() - new Date(t.start).getTime());
+    // successors: pred -> [successors that depend on pred]
+    const succ = {};
+    projs.forEach(s => (s.deps || []).forEach(pid => { if (byId(pid)) { (succ[pid] = succ[pid] || []).push(s.id); } }));
+    const longest = {}, nextOf = {};
+    const visit = (id) => {
+      if (longest[id] != null) return longest[id];
+      longest[id] = 0; // guard against cycles
+      const t = byId(id); if (!t) return 0;
+      let best = 0, bestNext = null;
+      (succ[id] || []).forEach(sid => { const v = visit(sid); if (v > best) { best = v; bestNext = sid; } });
+      nextOf[id] = bestNext;
+      return (longest[id] = dur(t) + best);
+    };
+    let anyDep = false;
+    projs.forEach(p => { if ((p.deps || []).some(d => byId(d))) anyDep = true; visit(p.id); });
+    if (!anyDep) return new Set();
+    // start = project maximizing longest[]
+    let startId = null, max = -1;
+    projs.forEach(p => { if (longest[p.id] > max) { max = longest[p.id]; startId = p.id; } });
+    const path = new Set(); let cur = startId; let guard = 0;
+    while (cur && guard++ < 1000) { path.add(cur); cur = nextOf[cur]; }
+    return path.size > 1 ? path : new Set();
+  }
 
   function projBarHtml(p, left, width, top, contL, contR) {
     const cat = state.categories.find(c => c.id === p.categoryId) || { color: "#0ea5e9" };
     const comp = projectCompletion(p).pct;
     const dep = (p.deps && p.deps.length) ? "🔗 " : "";
-    return `<div class="cal-proj ${p.completed ? "done" : ""} ${contL ? "cont-l" : ""} ${contR ? "cont-r" : ""}" data-id="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))}) · ${comp}% done${p.deps && p.deps.length ? " · depends on " + p.deps.length : ""}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;background:${cat.color}">${contL ? "" : `<span class="cal-proj-h l"></span>`}<span class="cal-proj-label">${contL ? "" : "📊 "}${dep}${esc(p.title)}</span>${contR ? "" : `<span class="cal-proj-h r"></span>`}<span class="cal-proj-fill" style="width:${comp}%"></span></div>`;
+    const crit = _critSet.has(p.id) ? " crit" : "";
+    return `<div class="cal-proj ${p.completed ? "done" : ""} ${contL ? "cont-l" : ""} ${contR ? "cont-r" : ""}${crit}" data-id="${p.id}" title="${esc(p.title)} (${esc(rangeLabel(p))}) · ${comp}% done${p.deps && p.deps.length ? " · depends on " + p.deps.length : ""}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;background:${cat.color}">${contL ? "" : `<span class="cal-proj-h l"></span>`}<span class="cal-proj-label">${contL ? "" : "📊 "}${dep}${esc(p.title)}</span>${contR ? "" : `<span class="cal-proj-h r"></span>`}<span class="cal-proj-fill" style="width:${comp}%"></span></div>`;
   }
   function chipHtml(t) {
     const cat = state.categories.find(c => c.id === t.categoryId) || { color: "#888" };
@@ -3129,6 +3184,7 @@
   function renderCalendar() {
     const view = $("calendarView");
     const mode = state.calMode || "month";
+    _critSet = state.calCritical ? computeCriticalPath() : new Set();
     let title;
     if (mode === "month") title = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
     else if (mode === "week") { const ws = calWeekStart(calMonth), we = new Date(ws); we.setDate(we.getDate() + 6); title = fmtDate(ws) + " – " + fmtDate(we); }
@@ -3145,6 +3201,7 @@
           <button class="cal-mode ${mode === "month" ? "active" : ""}" data-mode="month">Month</button>
           <button class="cal-mode ${mode === "week" ? "active" : ""}" data-mode="week">Week</button>
           <button class="cal-mode ${mode === "agenda" ? "active" : ""}" data-mode="agenda">Agenda</button>
+          <button class="cal-crit ${state.calCritical ? "active" : ""}" id="calCrit" title="Highlight the critical path across linked projects">⚡ Critical path</button>
         </div>
       </div>
       <div id="calBody"></div>`;
@@ -3152,6 +3209,11 @@
     if ($("calNext")) $("calNext").onclick = () => { const d = new Date(calMonth); if (mode === "month") d.setMonth(d.getMonth() + 1); else d.setDate(d.getDate() + 7); calMonth = d; renderCalendar(); };
     $("calToday").onclick = () => { calMonth = new Date(); renderCalendar(); };
     view.querySelectorAll(".cal-mode").forEach(b => b.onclick = () => { state.calMode = b.dataset.mode; save(); renderCalendar(); });
+    $("calCrit").onclick = () => {
+      state.calCritical = !state.calCritical; save(); renderCalendar();
+      const n = computeCriticalPath().size;
+      toast(state.calCritical ? (n ? "⚡ Critical path: " + n + " linked projects" : "No linked projects to chain yet") : "Critical path off");
+    };
     const body = $("calBody");
     if (mode === "month") calBodyMonth(body);
     else if (mode === "week") calBodyWeek(body);
@@ -3186,6 +3248,44 @@
     });
     html += `</div>`;
     body.innerHTML = html;
+    requestAnimationFrame(() => drawDepArrows(body));
+  }
+
+  // Draw SVG connectors between dependent project bars (predecessor end → successor start)
+  function drawDepArrows(body) {
+    const grid = body.querySelector(".cal-grid"); if (!grid) return;
+    grid.querySelectorAll(".cal-arrows").forEach(s => s.remove());
+    const segMap = {};
+    grid.querySelectorAll(".cal-proj[data-id]").forEach(el => { const id = el.getAttribute("data-id"); (segMap[id] = segMap[id] || []).push(el); });
+    const gr = grid.getBoundingClientRect();
+    const rel = el => { const r = el.getBoundingClientRect(); return { left: r.left - gr.left, right: r.right - gr.left, midY: (r.top + r.bottom) / 2 - gr.top }; };
+    const edges = [];
+    state.tasks.forEach(s => {
+      if (s.type !== "project" || !Array.isArray(s.deps) || !s.deps.length) return;
+      const ss = segMap[s.id]; if (!ss) return;
+      const succEl = ss.slice().sort((a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return A.top - B.top || A.left - B.left; })[0];
+      s.deps.forEach(pid => {
+        const ps = segMap[pid]; if (!ps) return;
+        const predEl = ps.slice().sort((a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return B.top - A.top || B.right - A.right; })[0];
+        const P = rel(predEl), S = rel(succEl);
+        edges.push({ x1: P.right, y1: P.midY, x2: S.left, y2: S.midY, crit: _critSet.has(s.id) && _critSet.has(pid) });
+      });
+    });
+    if (!edges.length) return;
+    const W = grid.offsetWidth, H = grid.offsetHeight;
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "cal-arrows"); svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.innerHTML = '<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa3b2"/></marker><marker id="ahc" markerWidth="8" markerHeight="8" refX="6" refY="3.2" orient="auto"><path d="M0,0 L6.5,3.2 L0,6.4 Z" fill="#ef4444"/></marker></defs>';
+    edges.forEach(e => {
+      const dx = Math.max(16, Math.abs(e.x2 - e.x1) * 0.4);
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", `M ${e.x1} ${e.y1} C ${e.x1 + dx} ${e.y1}, ${e.x2 - dx} ${e.y2}, ${e.x2} ${e.y2}`);
+      path.setAttribute("class", "dep-arrow" + (e.crit ? " crit" : ""));
+      path.setAttribute("marker-end", e.crit ? "url(#ahc)" : "url(#ah)");
+      svg.appendChild(path);
+    });
+    grid.appendChild(svg);
   }
 
   function calBodyWeek(body) {
@@ -3218,11 +3318,12 @@
     week.forEach((day, ci) => {
       const isToday = sameDay(day, today);
       const timed = items.filter(t => t.type !== "project" && t.deadline && sameDay(new Date(t.deadline), day) && !isMidnight(t)).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-      const BLOCKH = 34; const laneBottom = [];
+      const MINH = 22; const laneBottom = [];
       const placed = timed.map(t => {
         const dt = new Date(t.deadline); const top = (dt.getHours() * 60 + dt.getMinutes()) / 60 * HOUR_H;
+        const h = t.durationMin ? Math.max(MINH, t.durationMin / 60 * HOUR_H) : 34;
         let lane = 0; while (lane < laneBottom.length && laneBottom[lane] > top + 1) lane++;
-        laneBottom[lane] = top + BLOCKH; return { t, top, lane };
+        laneBottom[lane] = top + h; return { t, top, lane, h };
       });
       const lc = Math.max(1, laneBottom.length);
       let col = `<div class="wk-col ${isToday ? "wk-today" : ""}" data-day="${startOfDay(day).getTime()}">`;
@@ -3231,7 +3332,9 @@
       placed.forEach(pl => {
         const t = pl.t; const cat = state.categories.find(c => c.id === t.categoryId) || { color: "#888" };
         const w = 100 / lc, left = pl.lane * w;
-        col += `<div class="wk-block ${t.completed ? "done" : ""}" data-id="${t.id}" title="${esc(t.title)}" style="top:${pl.top}px;height:${BLOCKH}px;left:calc(${left}% + 1px);width:calc(${w}% - 2px);border-left-color:${cat.color}"><span class="wk-time">${fmtTime(new Date(t.deadline))}</span> ${esc(t.title)}</div>`;
+        const st = new Date(t.deadline);
+        const timeLbl = t.durationMin ? fmtTime(st) + "–" + fmtTime(new Date(st.getTime() + t.durationMin * 60000)) : fmtTime(st);
+        col += `<div class="wk-block ${t.completed ? "done" : ""}" data-id="${t.id}" title="${esc(t.title)}" style="top:${pl.top}px;height:${pl.h}px;left:calc(${left}% + 1px);width:calc(${w}% - 2px);border-left-color:${cat.color}"><span class="wk-time">${timeLbl}</span> ${esc(t.title)}<span class="wk-block-h" data-rz="1"></span></div>`;
       });
       col += `</div>`; html += col;
     });
@@ -3250,6 +3353,15 @@
     });
     body.querySelectorAll(".wk-block").forEach(block => {
       const id = block.getAttribute("data-id");
+      // bottom edge → resize duration
+      const rz = block.querySelector(".wk-block-h");
+      if (rz) rz.addEventListener("pointerdown", e => {
+        e.preventDefault(); e.stopPropagation();
+        const y0 = e.clientY, t0 = byId(id); const base = (t0 && t0.durationMin) || 30; let dur = base;
+        const mv = ev => { dur = Math.max(15, Math.min(24 * 60, Math.round((base + (ev.clientY - y0) / HOUR_H * 60) / 15) * 15)); block.style.height = Math.max(22, dur / 60 * HOUR_H) + "px"; };
+        const up2 = () => { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up2); updateTask(id, { durationMin: dur }); toast("Duration → " + fmtDur(dur)); renderCalendar(); };
+        document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up2);
+      });
       block.addEventListener("pointerdown", e => {
         if (e.button && e.button !== 0) return;
         e.preventDefault();
@@ -3467,6 +3579,12 @@
               <option value="weekly" ${t.recur==="weekly"?"selected":""}>🔁 Weekly</option>
               <option value="monthly" ${t.recur==="monthly"?"selected":""}>🔁 Monthly</option>
             </select>
+          </div>
+          <div class="field">
+            <label>Duration (week view)</label>
+            <select data-edit="durationMin">
+              ${[[0,"— point —"],[15,"15 min"],[30,"30 min"],[45,"45 min"],[60,"1 h"],[90,"1.5 h"],[120,"2 h"],[180,"3 h"],[240,"4 h"]].map(([v,l]) => `<option value="${v}" ${(t.durationMin||0)===v?"selected":""}>${l}</option>`).join("")}
+            </select>
           </div>`}
           <div class="field" style="flex:1;min-width:160px">
             <label>Tags (comma separated)</label>
@@ -3527,6 +3645,7 @@
         const f = el.getAttribute("data-edit");
         if (f === "tags") updateTask(t.id, { tags: el.value.split(",").map(s => s.trim()).filter(Boolean) });
         else if (f === "deadline") updateTask(t.id, { deadline: el.value || "" });
+        else if (f === "durationMin") updateTask(t.id, { durationMin: parseInt(el.value) || 0 });
         else updateTask(t.id, { [f]: el.value });
         if (isProject && (f === "start" || f === "deadline")) { clampToDeps(t); const sh = cascadeSchedule([t.id]); if (sh.length) { save(); toast("🔗 Shifted " + sh.length + " linked project" + (sh.length > 1 ? "s" : "")); } }
         render();

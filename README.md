@@ -63,7 +63,8 @@ Turn an image into tasks — great for emails, meeting notes, or numbered/bullet
 Use the **Task / Project toggle** in the add bar:
 - A **Task** has a single **deadline** (the default).
 - A **Project** has a **start** and an **end** date. Projects show two bars: a **Timeline** bar (percent of the schedule elapsed, with a "starts in / days left / ended" label) and a **Milestones** bar that **rolls up completion from its checklist** (e.g. 3/5 · 60% done). The calendar bar also fills to match milestone completion.
-- **Dependencies** 🔗 — in a project's editor, pick which projects it "**depends on**" (starts after they finish). Move or resize a project and its dependents **cascade-shift automatically** to stay after it (chained, cycle-safe, durations preserved). Linked projects show a 🔗 badge on their card and calendar bar.
+- **Dependencies** 🔗 — in a project's editor, pick which projects it "**depends on**" (starts after they finish). Move or resize a project and its dependents **cascade-shift automatically** to stay after it (chained, cycle-safe, durations preserved). Linked projects show a 🔗 badge and are **connected by arrows on the Month calendar**.
+- **Critical path** ⚡ — toggle "Critical path" in the Calendar to highlight the longest dependent chain of projects (the one that drives your end date) with a red outline and bold arrows.
 
 Both live together under their notebook and on the calendar.
 
@@ -83,8 +84,8 @@ Both live together under their notebook and on the calendar.
 
 ### 🗓 Calendar view
 A full calendar (in the sidebar) with **Month / Week / Agenda** modes (your choice is remembered):
-- **Month** — tasks appear as chips on their due date (colored by notebook, "+N more" on busy days); **projects render as bars that span their start→end days**, stacked into lanes like a Gantt/Google-Calendar timeline.
-- **Week** — a Google-Calendar-style **hour grid**: an all-day strip on top (project bars + all-day tasks) and a scrollable timeline below where timed tasks sit at their exact time, with a live "now" line on today. **Drag a task block up/down to change its time (snapped to 15 min) or left/right to change its day.**
+- **Month** — tasks appear as chips on their due date (colored by notebook, "+N more" on busy days); **projects render as bars that span their start→end days**, stacked into lanes like a Gantt/Google-Calendar timeline, with **arrows drawn between dependent projects**.
+- **Week** — a Google-Calendar-style **hour grid**: an all-day strip on top (project bars + all-day tasks) and a scrollable timeline below where timed tasks sit at their exact time, with a live "now" line on today. **Drag a task block up/down to change its time (snapped to 15 min) or left/right to change its day, and drag its bottom edge to give it a duration** (also settable in the task editor).
 - **Agenda** — an upcoming schedule grouped by day (next 45 days) with an **Overdue** section and Today/Tomorrow labels.
 - **Drag to reschedule** — drag a task chip onto another day to move it (its time is preserved). Drag a **project bar's edges** to change its start/end, or drag the bar body to move the whole project.
 - Navigate with ‹ / › (month or week) or jump to **Today**; today is highlighted. Click any item to jump to it (flash-highlighted); click a day to see everything on it.

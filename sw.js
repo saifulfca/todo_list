@@ -1,5 +1,5 @@
-/* TaskNest service worker — offline app shell caching */
-const CACHE = "tasknest-v2";
+/* TaskNest service worker — network-first so updates always show, cache for offline */
+const CACHE = "tasknest-v3";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -23,22 +23,20 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   // Let cross-origin requests (CDN scripts, Google APIs) go straight to the network.
   if (url.origin !== self.location.origin) return;
-  // Never cache the local data API — always hit the launcher for live data.
+  // Never touch the local data API — always live.
   if (url.pathname.startsWith("/api/")) return;
 
+  // Network-first: always try to fetch the freshest file (so app updates appear immediately),
+  // update the cache, and fall back to the cache only when offline.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200 && res.type === "basic") {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached || caches.match("./index.html"));
-      // Cache-first for speed/offline, refresh in the background.
-      return cached || network;
-    })
+    fetch(req)
+      .then((res) => {
+        if (res && res.status === 200 && res.type === "basic") {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req).then((c) => c || caches.match("./index.html")))
   );
 });

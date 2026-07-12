@@ -110,10 +110,23 @@ The app has a **"Sign in with Google"** button (top bar → **Connect Google**).
 - **Local server:** from the project folder run `python -m http.server 8000`, then open `http://localhost:8000`.
 
 ### Data & appearance
-- **Auto-save** to browser local storage.
+- **Auto-save to a real file (recommended)** — link a file on your PC and every change is written to it automatically. See below.
+- **Auto-save** to browser local storage (default cache).
 - **Backup / Restore** — export all data to a JSON file and re-import it on any machine.
 - **Dark mode** 🌙.
 - **Responsive** — works on desktop and mobile with a slide-out sidebar.
+
+## Never lose your data (save to a file on your PC)
+
+By default the app stores data in the browser's local storage — which **gets wiped when you clear browsing data**. To keep your tasks safe permanently, link a real file on disk:
+
+1. In the sidebar, click **💾 Save to a file**.
+2. Click **Create / choose a data file** and save e.g. `tasknest-data.json` (put it in Documents).
+3. That's it — TaskNest now **auto-saves every change to that file**.
+
+Because the file lives on your disk (not in the browser), **clearing browsing data no longer deletes your tasks**. If you ever open the app and it looks empty (e.g. after clearing data or on a new browser), click **💾 Save to a file → Open an existing data file**, pick your `tasknest-data.json`, and everything is restored — then it keeps auto-saving there.
+
+> This uses the File System Access API — available in **Chrome and Edge** on Windows (recommended for local use). In other browsers, use **⬇ Backup / ⬆ Restore** to save/load the JSON manually. For the smoothest experience, open the app from the hosted URL or a local server rather than `file://`.
 
 ## Privacy
 

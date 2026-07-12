@@ -464,6 +464,11 @@
   .gsi-logo svg { display: block; }
   .gsi-sub { font-size: 12.5px; color: var(--text-faint); text-align: center; margin-bottom: 16px; }
 
+  /* local file storage */
+  .fs-desc { font-size: 13px; color: var(--text-soft); line-height: 1.6; margin-bottom: 16px; }
+  #fileBtn.linked { background: var(--low-bg); color: var(--low); border-color: var(--low); }
+  .g-status.saving .sdot { background: var(--med); }
+
   /* ---------- Scan button + OCR ---------- */
   .scan-btn {
     display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
@@ -640,6 +645,7 @@
       <button id="exportBtn" title="Backup all data to a JSON file">⬇ Backup</button>
       <button id="importBtn" title="Restore from a backup file">⬆ Restore</button>
       <button id="icsBtn" class="wide" title="Export all scheduled tasks as a calendar file">📆 Export calendar (.ics)</button>
+      <button id="fileBtn" class="wide" title="Save your data to a file on this PC (survives clearing browsing data)">💾 Save to a file</button>
       <button id="installBtn" class="wide" style="display:none" title="Install TaskNest as an app">⬇️ Install app</button>
       <input type="file" id="importFile" accept="application/json" hidden />
     </div>
@@ -840,6 +846,25 @@
     </div>
   </div>
 
+  <!-- Local file storage modal -->
+  <div class="modal-back" id="fsModal">
+    <div class="modal">
+      <h3>💾 Save data to a file</h3>
+      <div class="g-status" id="fsStatus"><span class="sdot"></span><span id="fsStatusText">Not linked to a file</span></div>
+      <p class="fs-desc">Link a file on your PC and TaskNest will <b>auto-save every change to it</b>. Unlike normal browser storage, this file <b>survives clearing your browsing data</b> — your tasks stay safe on your disk. If you ever lose the app's memory, just <b>Open</b> that file to restore everything.</p>
+      <div id="fsButtons">
+        <button class="btn-primary" id="fsCreate" style="width:100%;margin-bottom:8px">📁 Create / choose a data file</button>
+        <button class="btn-ghost" id="fsOpen" style="width:100%">📂 Open an existing data file</button>
+      </div>
+      <div class="g-help" id="fsUnsupported" style="display:none">Your browser can't save directly to files. Use <b>Chrome</b> or <b>Edge</b> on Windows for auto-save. Meanwhile, the <b>⬇ Backup</b> / <b>⬆ Restore</b> buttons let you save and reload a data file manually.</div>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="fsSaveNow" style="display:none">Save now</button>
+        <button class="btn-ghost" id="fsUnlink" style="display:none">Unlink</button>
+        <button class="btn-ghost" id="fsClose">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -933,9 +958,46 @@
   function save() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
     catch (e) { toast("⚠ Could not save — storage may be full"); }
+    if (typeof FileStore !== "undefined" && FileStore.handle) FileStore.scheduleWrite();
   }
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  // Normalize + adopt a loaded data object (from a file or backup) as current state
+  function applyLoadedData(data) {
+    data.theme = data.theme || "light";
+    data.sortMode = data.sortMode || "smart";
+    data.google = data.google && typeof data.google === "object"
+      ? { clientId: data.google.clientId || "", autoSync: data.google.autoSync !== false }
+      : { clientId: "", autoSync: true };
+    data.remind = !!data.remind;
+    data.notified = Array.isArray(data.notified) ? data.notified : [];
+    data.tasks = (data.tasks || []).map(normalizeTask);
+    state = data;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  // Minimal IndexedDB key/value store (used only to remember the linked file handle)
+  function idbOpen() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open("tasknest-fs", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("kv");
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function idbGet(key) {
+    try { const db = await idbOpen(); return await new Promise((res, rej) => { const tx = db.transaction("kv", "readonly"); const g = tx.objectStore("kv").get(key); g.onsuccess = () => res(g.result); g.onerror = () => rej(g.error); }); }
+    catch (e) { return undefined; }
+  }
+  async function idbSet(key, val) {
+    try { const db = await idbOpen(); return await new Promise((res, rej) => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(val, key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); }
+    catch (e) {}
+  }
+  async function idbDel(key) {
+    try { const db = await idbOpen(); return await new Promise((res) => { const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").delete(key); tx.oncomplete = () => res(); tx.onerror = () => res(); }); }
+    catch (e) {}
+  }
 
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);
@@ -2046,6 +2108,164 @@
   $("remindBtn").onclick = () => Remind.toggle();
   $("clearDone").onclick = clearCompleted;
 
+  // ---------- Local file storage (auto-save to a real file on disk) ----------
+  const FileStore = {
+    supported: (typeof window !== "undefined" && typeof window.showSaveFilePicker === "function"),
+    handle: null,
+    needsReconnect: false,
+    saveTimer: null,
+
+    async init() {
+      if (!this.supported) { this.updateUI(); return; }
+      try {
+        const h = await idbGet("handle");
+        if (h) {
+          this.handle = h;
+          const perm = await h.queryPermission({ mode: "readwrite" });
+          if (perm === "granted") { await this.loadFromFile(true); }
+          else { this.needsReconnect = true; }
+        }
+      } catch (e) {}
+      this.updateUI();
+    },
+
+    openModal() {
+      $("fsUnsupported").style.display = this.supported ? "none" : "block";
+      $("fsButtons").style.display = this.supported ? "block" : "none";
+      this.updateUI();
+      $("fsModal").classList.add("open");
+    },
+
+    updateUI() {
+      const linked = !!this.handle;
+      const name = linked ? (this.handle.name || "data file") : "";
+      const st = $("fsStatus"), stx = $("fsStatusText");
+      if (st) st.classList.toggle("on", linked && !this.needsReconnect);
+      if (stx) stx.textContent = !this.supported ? "Not supported in this browser"
+        : this.needsReconnect ? "Linked to " + name + " — click Reconnect"
+        : linked ? "Auto-saving to " + name : "Not linked to a file";
+      const sn = $("fsSaveNow"), ul = $("fsUnlink");
+      if (sn) sn.style.display = linked && !this.needsReconnect ? "inline-block" : "none";
+      if (ul) ul.style.display = linked ? "inline-block" : "none";
+      const cr = $("fsCreate"), op = $("fsOpen");
+      if (this.needsReconnect && cr) { cr.textContent = "🔗 Reconnect data file"; }
+      else if (cr) { cr.textContent = "📁 Create / choose a data file"; }
+
+      const fb = $("fileBtn");
+      if (fb) {
+        fb.classList.toggle("linked", linked && !this.needsReconnect);
+        fb.textContent = !this.supported ? "💾 Save to a file"
+          : this.needsReconnect ? "🔗 Reconnect file"
+          : linked ? "💾 Saving: " + name : "💾 Save to a file";
+      }
+    },
+
+    async ensureWrite() {
+      if (!this.handle) return false;
+      let p = await this.handle.queryPermission({ mode: "readwrite" });
+      if (p === "granted") return true;
+      p = await this.handle.requestPermission({ mode: "readwrite" });
+      const ok = p === "granted";
+      if (ok) { this.needsReconnect = false; this.updateUI(); }
+      return ok;
+    },
+
+    async create() {
+      if (this.needsReconnect && this.handle) { return this.reconnect(); }
+      try {
+        const h = await window.showSaveFilePicker({
+          suggestedName: "tasknest-data.json",
+          types: [{ description: "TaskNest data", accept: { "application/json": [".json"] } }]
+        });
+        this.handle = h; this.needsReconnect = false;
+        await idbSet("handle", h);
+        await this.writeNow();
+        toast("Linked ✓ auto-saving to " + h.name);
+        this.updateUI();
+        $("fsModal").classList.remove("open");
+      } catch (e) { if (e.name !== "AbortError") toast("⚠ " + (e.message || "Could not create file")); }
+    },
+
+    async open() {
+      try {
+        const [h] = await window.showOpenFilePicker({
+          types: [{ description: "TaskNest data", accept: { "application/json": [".json"] } }],
+          multiple: false
+        });
+        this.handle = h; this.needsReconnect = false;
+        await idbSet("handle", h);
+        await this.loadFromFile(false);
+        render();
+        toast("Opened " + h.name + " — auto-saving here now");
+        this.updateUI();
+        $("fsModal").classList.remove("open");
+      } catch (e) { if (e.name !== "AbortError") toast("⚠ " + (e.message || "Could not open file")); }
+    },
+
+    async reconnect() {
+      if (!this.handle) return;
+      const ok = await this.ensureWrite();
+      if (!ok) { toast("Permission needed to use the file"); return; }
+      this.needsReconnect = false;
+      await this.loadFromFile(false);
+      render();
+      toast("Reconnected ✓");
+      this.updateUI();
+      $("fsModal").classList.remove("open");
+    },
+
+    async loadFromFile(silent) {
+      try {
+        let p = await this.handle.queryPermission({ mode: "read" });
+        if (p !== "granted") { p = await this.handle.requestPermission({ mode: "read" }); if (p !== "granted") return; }
+        const file = await this.handle.getFile();
+        const text = await file.text();
+        if (!text.trim()) { await this.writeNow(); return; } // brand-new/empty file: seed it
+        const data = JSON.parse(text);
+        if (data.categories && data.tasks) {
+          applyLoadedData(data);
+          activeCat = "all"; expanded.clear();
+          applyTheme();
+          if (!silent) render();
+        }
+      } catch (e) { if (!silent) toast("⚠ Could not read that file"); }
+    },
+
+    scheduleWrite() {
+      if (!this.handle || this.needsReconnect) return;
+      clearTimeout(this.saveTimer);
+      this.saveTimer = setTimeout(() => this.writeNow(), 700);
+    },
+
+    async writeNow() {
+      if (!this.handle) return;
+      try {
+        if (!(await this.ensureWrite())) { this.needsReconnect = true; this.updateUI(); return; }
+        const w = await this.handle.createWritable();
+        await w.write(JSON.stringify(state, null, 2));
+        await w.close();
+        const st = $("fsStatus");
+        if (st) { st.classList.add("saving"); setTimeout(() => st.classList.remove("saving"), 400); }
+      } catch (e) { /* keep silent; localStorage still has the data */ }
+    },
+
+    async unlink() {
+      this.handle = null; this.needsReconnect = false;
+      await idbDel("handle");
+      this.updateUI();
+      toast("Unlinked (data stays in the file and in this browser)");
+      $("fsModal").classList.remove("open");
+    }
+  };
+
+  $("fileBtn").onclick = () => FileStore.openModal();
+  $("fsClose").onclick = () => $("fsModal").classList.remove("open");
+  $("fsModal").onclick = (e) => { if (e.target === $("fsModal")) $("fsModal").classList.remove("open"); };
+  $("fsCreate").onclick = () => FileStore.create();
+  $("fsOpen").onclick = () => FileStore.open();
+  $("fsSaveNow").onclick = async () => { await FileStore.writeNow(); toast("Saved to file ✓"); };
+  $("fsUnlink").onclick = () => FileStore.unlink();
+
   // ---------- Render ----------
   function render() {
     document.body.classList.toggle("manual-sort", state.sortMode === "manual");
@@ -2498,6 +2718,7 @@
   Google.init();
   Remind.init();
   render();
+  FileStore.init();
 })();
 </script>
 </body>

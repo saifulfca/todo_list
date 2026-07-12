@@ -10,11 +10,15 @@ A polished, single-file to-do app that runs **entirely offline in your browser**
 **https://saifulfca.github.io/todo_list/** — this is required for Google sign-in, reminders, and installing it as an app.
 
 **Run it seamlessly on Windows (best for local use — no installs, data never lost):**
-1. Download this repo (**Code → Download ZIP**) and unzip it to a folder.
+1. Download this repo (**Code → Download ZIP**) and unzip it to a folder you'll keep (e.g. `Documents\TaskNest`).
 2. Double-click **`Start TaskNest.bat`**.
 3. Your browser opens the app and it just works. Your tasks are saved to **`tasknest-data.json`** in that folder, and reload automatically every time.
 
+**Optional — put an icon on your Desktop:** double-click **`Create Desktop Shortcut.bat`** once. It adds a **TaskNest** icon to your Desktop; from then on just double-click that to launch the app like any normal program.
+
 Because your data lives in a real file on disk (managed by the launcher, not the browser), **clearing your browsing data has no effect at all** — the app reopens with everything intact, no re-linking, no clicks. The launcher uses only Windows' built-in PowerShell (no Node, Python, or any install). Keep the small black window open while you use the app; close it to stop.
+
+> First run: if Windows SmartScreen warns about the `.bat`, click **More info → Run anyway** (it's your own file). This is normal for downloaded scripts.
 
 **Or just open the file (simplest):**
 1. Download or clone this repo.

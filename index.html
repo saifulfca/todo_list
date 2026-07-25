@@ -810,6 +810,11 @@
   .cp-sum { font-size: 12.5px; color: var(--text-soft); font-weight: 650; margin-left: auto; }
   .cp-x { background: none; border: none; font-size: 18px; color: var(--text-faint); cursor: pointer; line-height: 1; }
   .cp-x:hover { color: var(--high); }
+  .cp-tbtn { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-soft); border-radius: 8px; padding: 5px 11px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font); white-space: nowrap; }
+  .cp-tbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .cp-alabel { position: absolute; transform: translate(-50%, -50%); background: var(--surface); border: 1px solid var(--border); color: var(--text-soft); font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 7px; z-index: 4; pointer-events: none; white-space: nowrap; }
+  .cp-alabel.fs { color: var(--accent); border-color: var(--accent); }
+  .cp-alabel.ov { color: #ef4444; border-color: #ef4444; }
   .cp-body { flex: 1; overflow: auto; padding: 8px 14px 14px; }
   .cp-legend { padding: 9px 18px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-faint); line-height: 1.5; }
   .cp-empty { text-align: center; color: var(--text-faint); padding: 46px 20px; font-size: 14px; line-height: 1.7; }
@@ -1205,7 +1210,10 @@
       <div class="cp-head">
         <h3>⚡ Critical Path</h3>
         <select id="cpScope"></select>
+        <button class="cp-tbtn" id="cpToday" title="Shift the whole plan so the earliest project starts today (keeps durations &amp; links)">📅 Start today</button>
         <span class="cp-sum" id="cpSum"></span>
+        <button class="cp-x" id="cpExport" title="Download the Gantt as a PNG image">⬇</button>
+        <button class="cp-x" id="cpPrint" title="Print the Gantt or save it as PDF">🖨</button>
         <button class="cp-x" id="cpFull" title="Full screen">⤢</button>
         <button class="cp-x" id="cpClose" title="Close">✕</button>
       </div>
@@ -1260,6 +1268,7 @@
   let _projectEnd = null;     // ms timestamp of the whole plan's end
   let cpScope = "all";        // Critical Path pop-up scope: "all" or a notebook id
   let cpPxPerDay = 24;        // Critical Path pop-up: pixels per day (for drag math)
+  let cpRender = null;        // Last-rendered Critical Path geometry (for image/PDF export)
 
   function seed() {
     return {
@@ -2939,6 +2948,9 @@
   $("drillSearch").oninput = (e) => renderDrillList(e.target.value);
   $("cpClose").onclick = () => $("cpModal").classList.remove("open");
   $("cpFull").onclick = () => { state.cpFull = !state.cpFull; save(); applyCPWindow(); renderCP(); };
+  $("cpToday").onclick = rescheduleCPToToday;
+  $("cpExport").onclick = exportCPImage;
+  $("cpPrint").onclick = printCP;
   $("cpModal").onclick = (e) => { if (e.target === $("cpModal")) $("cpModal").classList.remove("open"); };
   $("archBannerRestore").onclick = () => { if (activeCat && activeCat !== "all" && activeCat !== "today" && activeCat !== "insights") unarchiveCategory(activeCat); };
   $("fsCreate").onclick = () => FileStore.create();
@@ -3361,6 +3373,99 @@
     });
     cpObserver.observe(win);
   }
+  function rescheduleCPToToday() {
+    const all = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
+    const projs = cpScope === "all" ? all : all.filter(p => p.categoryId === cpScope);
+    if (!projs.length) { toast("No dated projects to reschedule"); return; }
+    const earliest = Math.min.apply(null, projs.map(p => startOfDay(new Date(p.start)).getTime()));
+    const today = startOfDay(new Date()).getTime();
+    const deltaDays = Math.round((today - earliest) / 86400000);
+    if (deltaDays === 0) { toast("Plan already starts today"); return; }
+    const scopeLabel = cpScope === "all" ? "all notebooks" : ("\u201C" + ((state.categories.find(c => c.id === cpScope) || {}).name || "notebook") + "\u201D");
+    if (!confirm("Shift the whole plan for " + scopeLabel + " by " + deltaDays + " day(s) so the earliest project starts today?\n\nDurations and links are preserved.")) return;
+    projs.forEach(p => {
+      const s = new Date(p.start), e = new Date(p.deadline);
+      s.setDate(s.getDate() + deltaDays); e.setDate(e.getDate() + deltaDays);
+      p.start = toLocalInput(s); p.deadline = toLocalInput(e);
+      removeNotified(p.id);
+    });
+    cascadeSchedule(projs.map(p => p.id));
+    projs.forEach(p => Google.autoSync(p));
+    save(); render(); renderCP();
+    toast("📅 Plan shifted " + (deltaDays > 0 ? "forward " : "back ") + Math.abs(deltaDays) + "d — starts today");
+  }
+  function cpCssVar(n, fb) { const v = getComputedStyle(document.documentElement).getPropertyValue(n).trim(); return v || fb; }
+  function buildCPSvg() {
+    const R = cpRender; if (!R || !R.svgRows.length) return null;
+    const bg = cpCssVar("--surface", "#ffffff"), text = cpCssVar("--text", "#1f2733"),
+          soft = cpCssVar("--text-soft", "#667085"), faint = cpCssVar("--text-faint", "#9aa3b2"),
+          border = cpCssVar("--border", "#e6e9f0"), accent = cpCssVar("--accent", "#6366f1");
+    const oy = 44, pad = 14;
+    const W = R.chartW, H = R.chartH + oy + 12;
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Inter, Segoe UI, Arial, sans-serif">`;
+    s += `<rect width="${W}" height="${H}" fill="${bg}"/>`;
+    s += `<text x="${pad}" y="26" font-size="15" font-weight="700" fill="${text}">${esc(R.title)}</text>`;
+    s += `<text x="${W - pad}" y="26" font-size="11" font-weight="600" fill="${soft}" text-anchor="end">${esc(R.sumText)}</text>`;
+    s += `<defs><marker id="cpxah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa3b2"/></marker><marker id="cpxahc" markerWidth="9" markerHeight="9" refX="6.5" refY="3.2" orient="auto"><path d="M0,0 L6.5,3.2 L0,6.4 Z" fill="#ef4444"/></marker></defs>`;
+    R.gridLines.forEach(x => s += `<line x1="${x}" y1="${oy + R.axisH}" x2="${x}" y2="${oy + R.chartH}" stroke="${border}" stroke-opacity="0.5"/>`);
+    if (R.todayX != null) s += `<line x1="${R.todayX}" y1="${oy + R.axisH}" x2="${R.todayX}" y2="${oy + R.chartH}" stroke="${accent}" stroke-width="2" stroke-opacity="0.6"/>`;
+    R.axisTicks.forEach(t => s += `<text x="${t.x + 4}" y="${oy + 20}" font-size="10" font-weight="600" fill="${faint}">${esc(t.label)}</text>`);
+    R.svgArrows.forEach(a => {
+      const col = a.crit ? "#ef4444" : "#9aa3b2", sw = a.crit ? 2.6 : 1.8;
+      s += `<path d="M ${a.x1} ${a.y1 + oy} C ${a.x1 + a.mx} ${a.y1 + oy}, ${a.x2 - a.mx} ${a.y2 + oy}, ${a.x2} ${a.y2 + oy}" fill="none" stroke="${col}" stroke-width="${sw}" marker-end="url(#${a.crit ? "cpxahc" : "cpxah"})"/>`;
+      const lx = (a.x1 + a.x2) / 2, ly = (a.y1 + a.y2) / 2 + oy - 10;
+      const lc = a.gapCls === "ov" ? "#ef4444" : (a.gapCls === "fs" ? accent : soft);
+      const tw = a.gapTxt.length * 6 + 8;
+      s += `<rect x="${lx - tw / 2}" y="${ly - 8}" width="${tw}" height="15" rx="7" fill="${bg}" stroke="${lc}"/>`;
+      s += `<text x="${lx}" y="${ly + 3}" font-size="9.5" font-weight="800" fill="${lc}" text-anchor="middle">${esc(a.gapTxt)}</text>`;
+    });
+    R.svgRows.forEach(r => {
+      const nm = r.name.length > 24 ? r.name.slice(0, 23) + "\u2026" : r.name;
+      s += `<text x="${pad - 8}" y="${oy + r.top + R.rowH / 2 - 2}" font-size="12" font-weight="650" fill="${text}">${esc(nm)}</text>`;
+      s += `<text x="${pad - 8}" y="${oy + r.top + R.rowH / 2 + 12}" font-size="9" font-weight="700" fill="${r.crit ? "#ef4444" : faint}">${esc(r.badge)}</text>`;
+      s += `<rect x="${r.x}" y="${oy + r.barY}" width="${r.w}" height="${R.barH}" rx="5" fill="${r.color}"/>`;
+      if (r.crit) s += `<rect x="${r.x}" y="${oy + r.barY}" width="${r.w}" height="${R.barH}" rx="5" fill="none" stroke="#ef4444" stroke-width="2"/>`;
+      if (r.comp > 0) s += `<rect x="${r.x}" y="${oy + r.barY + R.barH - 3}" width="${r.w * r.comp / 100}" height="3" fill="rgba(255,255,255,0.9)"/>`;
+      const btxt = r.title + " \u00b7 " + r.comp + "%";
+      const maxChars = Math.max(0, Math.floor((r.w - 14) / 6.2));
+      const clipped = btxt.length > maxChars ? btxt.slice(0, Math.max(0, maxChars - 1)) + "\u2026" : btxt;
+      if (maxChars > 2) s += `<text x="${r.x + 8}" y="${oy + r.barY + R.barH / 2 + 4}" font-size="11" font-weight="700" fill="#ffffff">${esc(clipped)}</text>`;
+    });
+    s += `</svg>`;
+    return { svg: s, w: W, h: H };
+  }
+  function exportCPImage() {
+    const built = buildCPSvg(); if (!built) { toast("Nothing to export yet"); return; }
+    const url = URL.createObjectURL(new Blob([built.svg], { type: "image/svg+xml;charset=utf-8" }));
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2, canvas = document.createElement("canvas");
+      canvas.width = built.w * scale; canvas.height = built.h * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => {
+        if (!b) { toast("⚠ Export failed"); return; }
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(b);
+        a.download = "tasknest-critical-path-" + new Date().toISOString().slice(0, 10) + ".png";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        toast("⬇ Saved Gantt as PNG");
+      }, "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); toast("⚠ Could not render image"); };
+    img.src = url;
+  }
+  function printCP() {
+    const built = buildCPSvg(); if (!built) { toast("Nothing to print yet"); return; }
+    const w = window.open("", "_blank");
+    if (!w) { toast("Allow pop-ups to print / save as PDF"); return; }
+    w.document.open();
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + esc(cpRender.title) + '</title><style>@page{size:landscape;margin:10mm}body{margin:0;padding:12px;background:#fff}svg{max-width:100%;height:auto}</style></head><body>' + built.svg + '<' + 'script>window.onload=function(){setTimeout(function(){window.focus();window.print();},150);};<' + '/script></body></html>');
+    w.document.close();
+  }
   function buildCPScopeSelect() {
     const sel = $("cpScope"); if (!sel) return;
     const cats = state.categories.filter(c => state.tasks.some(t => t.type === "project" && t.categoryId === c.id && t.start && t.deadline));
@@ -3392,35 +3497,51 @@
     const today = startOfDay(new Date()).getTime();
 
     let grid = "", axis = "", labels = "", bars = "";
+    const gridLines = [], axisTicks = []; let todayX = null;
     for (let d = 0; d <= totalDays; d++) {
       const ms = minMs + d * day, dt = new Date(ms), x = labelW + d * pxPerDay;
-      if (dt.getDay() === 1) { grid += `<div class="cp-grid" style="left:${x}px;top:${axisH}px;height:${chartH - axisH}px"></div>`; axis += `<div class="cp-tick" style="left:${x}px">${dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>`; }
-      if (ms === today) grid += `<div class="cp-today" style="left:${x}px;top:${axisH}px;height:${chartH - axisH}px"></div>`;
+      if (dt.getDay() === 1) { grid += `<div class="cp-grid" style="left:${x}px;top:${axisH}px;height:${chartH - axisH}px"></div>`; const lbl = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }); axis += `<div class="cp-tick" style="left:${x}px">${lbl}</div>`; gridLines.push(x); axisTicks.push({ x, label: lbl }); }
+      if (ms === today) { grid += `<div class="cp-today" style="left:${x}px;top:${axisH}px;height:${chartH - axisH}px"></div>`; todayX = x; }
     }
-    const geo = {};
+    const geo = {}, svgRows = [];
     rows.forEach((p, i) => {
       const y = axisH + i * rowH;
       const sMs = new Date(p.start).getTime(), eMs = new Date(p.deadline).getTime();
       const x = xOf(sMs), w = Math.max(pxPerDay * 0.5, ((startOfDay(new Date(eMs)).getTime() - startOfDay(new Date(sMs)).getTime()) / day + 1) * pxPerDay);
-      geo[p.id] = { x, w, y: y + rowH / 2 };
+      const barY = y + (rowH - barH) / 2;
+      geo[p.id] = { x, w, y: y + rowH / 2, top: y, barY };
       const crit = sch.critical.has(p.id), slack = Math.round((sch.floatMs[p.id] || 0) / day);
       const cat = state.categories.find(c => c.id === p.categoryId) || { color: "#0ea5e9" }, comp = projectCompletion(p).pct;
-      labels += `<div class="cp-label" style="top:${y}px;height:${rowH}px"><span class="cp-name">${esc(p.title)}</span><span class="cp-badge ${crit ? "crit" : ""}">${crit ? "⚡ critical" : (slack + "d slack")}</span></div>`;
-      bars += `<div class="cp-bar ${crit ? "crit" : ""}" data-id="${p.id}" style="left:${x}px;top:${y + (rowH - barH) / 2}px;width:${w}px;height:${barH}px;background:${cat.color}"><span class="cp-h l"></span><span class="cp-bar-t">${esc(p.title)} · ${comp}%</span><span class="cp-h r"></span><span class="cp-fill" style="width:${comp}%"></span><span class="cp-node" title="Drag onto another project to link"></span></div>`;
+      const badge = crit ? "⚡ critical" : (slack + "d slack");
+      labels += `<div class="cp-label" style="top:${y}px;height:${rowH}px"><span class="cp-name">${esc(p.title)}</span><span class="cp-badge ${crit ? "crit" : ""}">${badge}</span></div>`;
+      bars += `<div class="cp-bar ${crit ? "crit" : ""}" data-id="${p.id}" style="left:${x}px;top:${barY}px;width:${w}px;height:${barH}px;background:${cat.color}"><span class="cp-h l"></span><span class="cp-bar-t">${esc(p.title)} · ${comp}%</span><span class="cp-h r"></span><span class="cp-fill" style="width:${comp}%"></span><span class="cp-node" title="Drag onto another project to link"></span></div>`;
+      svgRows.push({ x, w, barY, top: y, color: cat.color, comp, title: p.title, name: p.title, badge, crit });
     });
-    let arrows = "", unlinks = "";
+    let arrows = "", unlinks = "", alabels = "";
+    const svgArrows = [];
     rows.forEach(s => (s.deps || []).forEach(pid => {
       const P = geo[pid], S = geo[s.id]; if (!P || !S) return;
+      const pred = byId(pid); if (!pred) return;
       const x1 = P.x + P.w, y1 = P.y, x2 = S.x, y2 = S.y, mx = Math.max(14, Math.abs(x2 - x1) * 0.4);
       const crit = sch.critical.has(s.id) && sch.critical.has(pid);
+      const gapDays = Math.round((startOfDay(new Date(s.start)).getTime() - startOfDay(new Date(pred.deadline)).getTime()) / day);
+      const gapTxt = gapDays > 0 ? "+" + gapDays + "d" : (gapDays === 0 ? "FS" : gapDays + "d");
+      const gapCls = gapDays < 0 ? "ov" : (gapDays === 0 ? "fs" : "");
+      const gapTip = gapDays > 0 ? gapDays + "-day gap after \u201C" + pred.title + "\u201D" : (gapDays === 0 ? "Starts right after \u201C" + pred.title + "\u201D (finish\u2192start)" : Math.abs(gapDays) + "-day overlap with \u201C" + pred.title + "\u201D");
+      const mLabelX = (x1 + x2) / 2, mLabelY = (y1 + y2) / 2;
       arrows += `<path class="cp-arrow ${crit ? "crit" : ""}" d="M ${x1} ${y1} C ${x1 + mx} ${y1}, ${x2 - mx} ${y2}, ${x2} ${y2}" marker-end="url(#cpah${crit ? "c" : ""})"/>`;
-      unlinks += `<div class="cp-unlink" data-s="${s.id}" data-p="${pid}" style="left:${(x1 + x2) / 2}px;top:${(y1 + y2) / 2}px" title="Remove this link">✕</div>`;
+      alabels += `<div class="cp-alabel ${gapCls}" style="left:${mLabelX}px;top:${mLabelY - 10}px" title="${esc(gapTip)}">${gapTxt}</div>`;
+      unlinks += `<div class="cp-unlink" data-s="${s.id}" data-p="${pid}" style="left:${mLabelX}px;top:${mLabelY + 10}px" title="Remove this link">✕</div>`;
+      svgArrows.push({ x1, y1, x2, y2, mx, crit, gapTxt, gapCls });
     }));
     const svg = `<svg class="cp-arrows" width="${chartW}" height="${chartH}"><defs><marker id="cpah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa3b2"/></marker><marker id="cpahc" markerWidth="9" markerHeight="9" refX="6.5" refY="3.2" orient="auto"><path d="M0,0 L6.5,3.2 L0,6.4 Z" fill="#ef4444"/></marker></defs>${arrows}</svg>`;
-    body.innerHTML = `<div class="cp-chart" style="width:${chartW}px;height:${chartH}px"><div class="cp-axis" style="width:${chartW}px;height:${axisH}px">${axis}</div>${grid}${svg}${labels}${bars}${unlinks}</div>`;
+    body.innerHTML = `<div class="cp-chart" style="width:${chartW}px;height:${chartH}px"><div class="cp-axis" style="width:${chartW}px;height:${axisH}px">${axis}</div>${grid}${svg}${labels}${bars}${alabels}${unlinks}</div>`;
 
     const withSlack = projs.filter(p => sch.inGraph.has(p.id) && (sch.floatMs[p.id] || 0) >= day).length;
-    $("cpSum").textContent = "Ends " + fmtDate(new Date(sch.projectEnd)) + " · ⚡ " + sch.critical.size + " critical · " + withSlack + " with slack";
+    const sumText = "Ends " + fmtDate(new Date(sch.projectEnd)) + " · ⚡ " + sch.critical.size + " critical · " + withSlack + " with slack";
+    $("cpSum").textContent = sumText;
+    const scopeName = cpScope === "all" ? "All notebooks" : ((state.categories.find(c => c.id === cpScope) || {}).name || "Notebook");
+    cpRender = { svgRows, svgArrows, axisTicks, gridLines, todayX, labelW, rowH, barH, axisH, chartW, chartH, title: "⚡ Critical Path — " + scopeName, sumText };
     wireCP(body);
   }
   function wireCP(body) {

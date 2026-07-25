@@ -800,6 +800,39 @@
   .cal-proj.crit { box-shadow: 0 0 0 2px #ef4444, 0 2px 6px rgba(0,0,0,.3); z-index: 4; }
   .cal-proj { overflow: visible; }
 
+  /* Critical Path pop-up (mini-Gantt) */
+  .modal.cp { max-width: 980px; width: 94%; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+  .cp-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .cp-head h3 { margin: 0; font-size: 17px; }
+  .cp-head #cpScope { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--surface-2); color: var(--text); font-family: var(--font); font-size: 13px; font-weight: 600; outline: none; }
+  .cp-sum { font-size: 12.5px; color: var(--text-soft); font-weight: 650; margin-left: auto; }
+  .cp-x { background: none; border: none; font-size: 18px; color: var(--text-faint); cursor: pointer; line-height: 1; }
+  .cp-x:hover { color: var(--high); }
+  .cp-body { flex: 1; overflow: auto; padding: 8px 14px 14px; }
+  .cp-legend { padding: 9px 18px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-faint); line-height: 1.5; }
+  .cp-empty { text-align: center; color: var(--text-faint); padding: 46px 20px; font-size: 14px; line-height: 1.7; }
+  .cp-chart { position: relative; }
+  .cp-axis { position: absolute; top: 0; left: 0; }
+  .cp-tick { position: absolute; top: 8px; font-size: 10.5px; color: var(--text-faint); font-weight: 600; border-left: 1px solid var(--border); padding-left: 4px; height: calc(100% - 8px); }
+  .cp-grid { position: absolute; width: 1px; background: var(--border); opacity: .35; }
+  .cp-today { position: absolute; width: 2px; background: var(--accent); opacity: .55; }
+  .cp-label { position: absolute; left: 0; width: 180px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-right: 10px; box-sizing: border-box; }
+  .cp-name { font-size: 13px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cp-badge { font-size: 10px; font-weight: 700; color: var(--text-faint); }
+  .cp-badge.crit { color: #ef4444; }
+  .cp-arrows { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 3; overflow: visible; }
+  .cp-arrow { fill: none; stroke: #9aa3b2; stroke-width: 1.8; opacity: .8; }
+  .cp-arrow.crit { stroke: #ef4444; stroke-width: 2.6; opacity: 1; }
+  .cp-bar { position: absolute; border-radius: 6px; color: #fff; display: flex; align-items: center; box-shadow: var(--shadow); z-index: 2; cursor: grab; touch-action: none; }
+  .cp-bar.crit { box-shadow: 0 0 0 2px #ef4444, var(--shadow); }
+  .cp-bar-t { font-size: 11.5px; font-weight: 700; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; pointer-events: none; }
+  .cp-h { position: absolute; top: 0; width: 9px; height: 100%; cursor: ew-resize; z-index: 2; }
+  .cp-h.l { left: 0; } .cp-h.r { right: 0; }
+  .cp-fill { position: absolute; left: 0; bottom: 0; height: 3px; background: rgba(255,255,255,.9); border-radius: 0 2px 0 0; pointer-events: none; }
+  .cp-node { position: absolute; right: -16px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); cursor: crosshair; z-index: 5; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .cp-unlink { position: absolute; transform: translate(-50%, -50%); width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); color: var(--text-faint); font-size: 10px; line-height: 14px; text-align: center; cursor: pointer; z-index: 4; }
+  .cp-unlink:hover { color: #ef4444; border-color: #ef4444; }
+
   /* plan summary + baseline tools */
   .cal-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; flex-wrap: wrap; }
   .cal-summary { font-size: 12.5px; color: var(--text-soft); font-weight: 650; }
@@ -1004,6 +1037,7 @@
           <button class="chip" data-filter="done">Completed</button>
           <button class="chip" data-filter="high">High priority</button>
           <button class="chip" data-filter="today">Due soon</button>
+          <button class="chip" id="cpChip" style="display:none">⚡ Critical Path</button>
           <button class="chip" id="clearDone" style="margin-left:auto">🧹 Clear completed</button>
           <select class="sort-select" id="sortSelect" style="margin-left:8px">
             <option value="smart">↕ Smart sort (priority & deadline)</option>
@@ -1163,6 +1197,20 @@
     </div>
   </div>
 
+  <!-- Critical Path pop-up (mini-Gantt planner) -->
+  <div class="modal-back" id="cpModal">
+    <div class="modal cp">
+      <div class="cp-head">
+        <h3>⚡ Critical Path</h3>
+        <select id="cpScope"></select>
+        <span class="cp-sum" id="cpSum"></span>
+        <button class="cp-x" id="cpClose" title="Close">✕</button>
+      </div>
+      <div class="cp-body" id="cpBody"></div>
+      <div class="cp-legend">Drag a bar to reschedule · drag its left/right edge to resize · drag the ● onto another project to link · click ✕ on an arrow to unlink. Red = critical path (zero slack).</div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -1207,6 +1255,8 @@
   let _projFloat = {};        // project id -> total float / slack (ms)
   let _inGraph = new Set();   // project ids that participate in any dependency
   let _projectEnd = null;     // ms timestamp of the whole plan's end
+  let cpScope = "all";        // Critical Path pop-up scope: "all" or a notebook id
+  let cpPxPerDay = 24;        // Critical Path pop-up: pixels per day (for drag math)
 
   function seed() {
     return {
@@ -2634,6 +2684,7 @@
   };
   $("remindBtn").onclick = () => Remind.toggle();
   $("clearDone").onclick = clearCompleted;
+  $("cpChip").onclick = () => openCriticalPath(activeCat);
 
   // ---------- Local file storage (auto-save to a real file on disk) ----------
   const FileStore = {
@@ -2877,6 +2928,8 @@
   $("drillClose").onclick = () => $("drillModal").classList.remove("open");
   $("drillModal").onclick = (e) => { if (e.target === $("drillModal")) $("drillModal").classList.remove("open"); };
   $("drillSearch").oninput = (e) => renderDrillList(e.target.value);
+  $("cpClose").onclick = () => $("cpModal").classList.remove("open");
+  $("cpModal").onclick = (e) => { if (e.target === $("cpModal")) $("cpModal").classList.remove("open"); };
   $("archBannerRestore").onclick = () => { if (activeCat && activeCat !== "all" && activeCat !== "today" && activeCat !== "insights") unarchiveCategory(activeCat); };
   $("fsCreate").onclick = () => FileStore.create();
   $("fsOpen").onclick = () => FileStore.open();
@@ -2920,6 +2973,7 @@
     renderStats();
 
     const tasks = visibleTasks();
+    $("cpChip").style.display = scopeTasks().some(t => t.type === "project" && t.start && t.deadline) ? "inline-block" : "none";
     taskList.innerHTML = "";
     emptyState.style.display = tasks.length ? "none" : "block";
     tasks.forEach(t => taskList.appendChild(taskEl(t)));
@@ -3146,30 +3200,32 @@
       shifted = setProjectDates(t, toLocalInput(nd), toLocalInput(new Date(nd.getTime() + Math.max(0, dur))));
     } else { updateTask(id, { deadline: toLocalInput(nd) }); }
     toast("Rescheduled → " + fmtDate(nd) + (shifted.length ? " · 🔗 shifted " + shifted.length : ""));
-    renderCalendar();
+    render();
   }
   function resizeProject(id, which, dayDelta) {
     const t = byId(id); if (!t || t.type !== "project") return;
     const s = new Date(t.start), e = new Date(t.deadline);
     if (which === "move") { s.setDate(s.getDate() + dayDelta); e.setDate(e.getDate() + dayDelta); }
-    else if (which === "start") { s.setDate(s.getDate() + dayDelta); if (s > e) return renderCalendar(); }
-    else { e.setDate(e.getDate() + dayDelta); if (e < s) return renderCalendar(); }
+    else if (which === "start") { s.setDate(s.getDate() + dayDelta); if (s > e) return render(); }
+    else { e.setDate(e.getDate() + dayDelta); if (e < s) return render(); }
     const shifted = setProjectDates(t, toLocalInput(s), toLocalInput(e));
     if (shifted.length) toast("🔗 Shifted " + shifted.length + " linked project" + (shifted.length > 1 ? "s" : ""));
-    renderCalendar();
+    render();
   }
   function fmtHour(h) { const ap = h < 12 ? "AM" : "PM"; const hr = h % 12 === 0 ? 12 : h % 12; return hr + " " + ap; }
   function fmtDur(m) { const h = Math.floor(m / 60), mm = m % 60; return (h ? h + "h" : "") + (mm ? (h ? " " : "") + mm + "m" : (h ? "" : "0m")); }
 
   // CPM schedule: total float (slack) per project + the zero-slack critical set (backward pass).
-  function computeSchedule() {
-    const projs = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
+  function computeSchedule(projsArg) {
+    const projs = projsArg || state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
     const floatMs = {}, critical = new Set(), inGraph = new Set();
     if (!projs.length) return { floatMs, critical, inGraph, projectEnd: null };
+    const idset = new Set(projs.map(p => p.id));
+    const local = id => projs.find(p => p.id === id);
     const end = t => new Date(t.deadline).getTime();
     const dur = t => Math.max(0, end(t) - new Date(t.start).getTime());
     const succ = {}; let anyDep = false;
-    projs.forEach(s => (s.deps || []).forEach(pid => { if (byId(pid)) { (succ[pid] = succ[pid] || []).push(s.id); inGraph.add(s.id); inGraph.add(pid); anyDep = true; } }));
+    projs.forEach(s => (s.deps || []).forEach(pid => { if (idset.has(pid)) { (succ[pid] = succ[pid] || []).push(s.id); inGraph.add(s.id); inGraph.add(pid); anyDep = true; } }));
     const projectEnd = Math.max.apply(null, projs.map(end));
     const LF = {};
     const computeLF = (id, seen) => {
@@ -3179,7 +3235,7 @@
       const sl = succ[id] || [];
       if (!sl.length) return (LF[id] = projectEnd);
       let m = Infinity;
-      sl.forEach(sid => { const s = byId(sid); if (!s) return; const ls = computeLF(sid, seen) - dur(s); if (ls < m) m = ls; });
+      sl.forEach(sid => { const s = local(sid); if (!s) return; const ls = computeLF(sid, seen) - dur(s); if (ls < m) m = ls; });
       return (LF[id] = (m === Infinity ? projectEnd : m));
     };
     projs.forEach(p => { floatMs[p.id] = Math.max(0, computeLF(p.id, new Set()) - end(p)); });
@@ -3248,6 +3304,133 @@
     return `<div class="cal-proj-ghost" title="Baseline: ${esc(rangeLabel(p))}" style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px"></div>`;
   }
 
+  // ---------- Critical Path pop-up (mini-Gantt planner) ----------
+  function openCriticalPath(scope) {
+    cpScope = (scope && !["all", "today", "insights", "calendar"].includes(scope)) ? scope : "all";
+    $("cpModal").classList.add("open");
+    renderCP();
+  }
+  function buildCPScopeSelect() {
+    const sel = $("cpScope"); if (!sel) return;
+    const cats = state.categories.filter(c => state.tasks.some(t => t.type === "project" && t.categoryId === c.id && t.start && t.deadline));
+    if (cpScope !== "all" && !cats.some(c => c.id === cpScope)) cpScope = "all";
+    sel.innerHTML = `<option value="all">All notebooks</option>` + cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    sel.value = cpScope;
+  }
+  function renderCP() {
+    buildCPScopeSelect();
+    const body = $("cpBody");
+    const all = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
+    const projs = cpScope === "all" ? all : all.filter(p => p.categoryId === cpScope);
+    if (!projs.length) {
+      body.innerHTML = `<div class="cp-empty">📊 No projects${cpScope === "all" ? "" : " in this notebook"} with dates yet.<br>Add a project (flip the toggle to <b>📊 Project</b> when adding, give it a start &amp; end), then drag the ● from one project onto another to link them.</div>`;
+      $("cpSum").textContent = ""; return;
+    }
+    const sch = computeSchedule(projs);
+    const day = 86400000;
+    const rows = projs.slice().sort((a, b) => new Date(a.start) - new Date(b.start) || new Date(a.deadline) - new Date(b.deadline));
+    const minMs = startOfDay(new Date(Math.min.apply(null, rows.map(p => new Date(p.start).getTime())))).getTime() - day;
+    const maxMs = startOfDay(new Date(Math.max.apply(null, rows.map(p => new Date(p.deadline).getTime())))).getTime() + 2 * day;
+    const totalDays = Math.max(1, Math.round((maxMs - minMs) / day));
+    const labelW = 180, rowH = 46, barH = 26, axisH = 32;
+    const avail = Math.max(360, (body.clientWidth || 760) - labelW - 24);
+    const pxPerDay = Math.max(16, Math.min(70, avail / totalDays));
+    cpPxPerDay = pxPerDay;
+    const chartW = labelW + totalDays * pxPerDay, chartH = axisH + rows.length * rowH + 8;
+    const xOf = ms => labelW + (startOfDay(new Date(ms)).getTime() - minMs) / day * pxPerDay;
+    const today = startOfDay(new Date()).getTime();
+
+    let grid = "", axis = "", labels = "", bars = "";
+    for (let d = 0; d <= totalDays; d++) {
+      const ms = minMs + d * day, dt = new Date(ms), x = labelW + d * pxPerDay;
+      if (dt.getDay() === 1) { grid += `<div class="cp-grid" style="left:${x}px;top:${axisH}px;height:${chartH - axisH}px"></div>`; axis += `<div class="cp-tick" style="left:${x}px">${dt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>`; }
+      if (ms === today) grid += `<div class="cp-today" style="left:${x}px;top:${axisH}px;height:${chartH - axisH}px"></div>`;
+    }
+    const geo = {};
+    rows.forEach((p, i) => {
+      const y = axisH + i * rowH;
+      const sMs = new Date(p.start).getTime(), eMs = new Date(p.deadline).getTime();
+      const x = xOf(sMs), w = Math.max(pxPerDay * 0.5, ((startOfDay(new Date(eMs)).getTime() - startOfDay(new Date(sMs)).getTime()) / day + 1) * pxPerDay);
+      geo[p.id] = { x, w, y: y + rowH / 2 };
+      const crit = sch.critical.has(p.id), slack = Math.round((sch.floatMs[p.id] || 0) / day);
+      const cat = state.categories.find(c => c.id === p.categoryId) || { color: "#0ea5e9" }, comp = projectCompletion(p).pct;
+      labels += `<div class="cp-label" style="top:${y}px;height:${rowH}px"><span class="cp-name">${esc(p.title)}</span><span class="cp-badge ${crit ? "crit" : ""}">${crit ? "⚡ critical" : (slack + "d slack")}</span></div>`;
+      bars += `<div class="cp-bar ${crit ? "crit" : ""}" data-id="${p.id}" style="left:${x}px;top:${y + (rowH - barH) / 2}px;width:${w}px;height:${barH}px;background:${cat.color}"><span class="cp-h l"></span><span class="cp-bar-t">${esc(p.title)} · ${comp}%</span><span class="cp-h r"></span><span class="cp-fill" style="width:${comp}%"></span><span class="cp-node" title="Drag onto another project to link"></span></div>`;
+    });
+    let arrows = "", unlinks = "";
+    rows.forEach(s => (s.deps || []).forEach(pid => {
+      const P = geo[pid], S = geo[s.id]; if (!P || !S) return;
+      const x1 = P.x + P.w, y1 = P.y, x2 = S.x, y2 = S.y, mx = Math.max(14, Math.abs(x2 - x1) * 0.4);
+      const crit = sch.critical.has(s.id) && sch.critical.has(pid);
+      arrows += `<path class="cp-arrow ${crit ? "crit" : ""}" d="M ${x1} ${y1} C ${x1 + mx} ${y1}, ${x2 - mx} ${y2}, ${x2} ${y2}" marker-end="url(#cpah${crit ? "c" : ""})"/>`;
+      unlinks += `<div class="cp-unlink" data-s="${s.id}" data-p="${pid}" style="left:${(x1 + x2) / 2}px;top:${(y1 + y2) / 2}px" title="Remove this link">✕</div>`;
+    }));
+    const svg = `<svg class="cp-arrows" width="${chartW}" height="${chartH}"><defs><marker id="cpah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#9aa3b2"/></marker><marker id="cpahc" markerWidth="9" markerHeight="9" refX="6.5" refY="3.2" orient="auto"><path d="M0,0 L6.5,3.2 L0,6.4 Z" fill="#ef4444"/></marker></defs>${arrows}</svg>`;
+    body.innerHTML = `<div class="cp-chart" style="width:${chartW}px;height:${chartH}px"><div class="cp-axis" style="width:${chartW}px;height:${axisH}px">${axis}</div>${grid}${svg}${labels}${bars}${unlinks}</div>`;
+
+    const withSlack = projs.filter(p => sch.inGraph.has(p.id) && (sch.floatMs[p.id] || 0) >= day).length;
+    $("cpSum").textContent = "Ends " + fmtDate(new Date(sch.projectEnd)) + " · ⚡ " + sch.critical.size + " critical · " + withSlack + " with slack";
+    wireCP(body);
+  }
+  function wireCP(body) {
+    $("cpScope").onchange = e => { cpScope = e.target.value; renderCP(); };
+    body.querySelectorAll(".cp-bar").forEach(bar => {
+      const id = bar.getAttribute("data-id");
+      cpBarDrag(bar, bar, id, "move");
+      const l = bar.querySelector(".cp-h.l"), r = bar.querySelector(".cp-h.r"), node = bar.querySelector(".cp-node");
+      if (l) cpBarDrag(l, bar, id, "start");
+      if (r) cpBarDrag(r, bar, id, "end");
+      if (node) node.addEventListener("pointerdown", e => cpStartLink(id, e));
+    });
+    body.querySelectorAll(".cp-unlink").forEach(u => u.onclick = () => {
+      const s = byId(u.dataset.s); if (!s) return;
+      s.deps = (s.deps || []).filter(d => d !== u.dataset.p);
+      save(); render(); renderCP(); toast("Unlinked");
+    });
+  }
+  function cpBarDrag(handle, bar, id, which) {
+    handle.addEventListener("pointerdown", e => {
+      e.preventDefault(); e.stopPropagation();
+      const x0 = e.clientX; let moved = false, delta = 0;
+      const move = ev => { delta = Math.round((ev.clientX - x0) / cpPxPerDay); if (Math.abs(ev.clientX - x0) > 4) { moved = true; if (which === "move") bar.style.transform = `translateX(${ev.clientX - x0}px)`; } };
+      const up = () => { document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); bar.style.transform = ""; if (moved && delta !== 0) { resizeProject(id, which, delta); renderCP(); } };
+      document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+    });
+  }
+  function cpStartLink(sourceId, e) {
+    e.preventDefault(); e.stopPropagation();
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("style", "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:10000;overflow:visible");
+    const path = document.createElementNS(NS, "path"); path.setAttribute("class", "link-temp"); svg.appendChild(path); document.body.appendChild(svg);
+    const r = e.target.getBoundingClientRect(); const x0 = r.left + r.width / 2, y0 = r.top + r.height / 2; let targetEl = null;
+    const move = ev => {
+      const mx = Math.max(8, Math.abs(ev.clientX - x0) * 0.4);
+      path.setAttribute("d", `M ${x0} ${y0} C ${x0 + mx} ${y0}, ${ev.clientX - mx} ${ev.clientY}, ${ev.clientX} ${ev.clientY}`);
+      if (targetEl) targetEl.classList.remove("link-target");
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const bar = el && el.closest ? el.closest(".cp-bar[data-id]") : null;
+      targetEl = (bar && bar.getAttribute("data-id") !== sourceId) ? bar : null;
+      if (targetEl) targetEl.classList.add("link-target");
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); svg.remove();
+      if (targetEl) {
+        targetEl.classList.remove("link-target");
+        const targetId = targetEl.getAttribute("data-id"), target = byId(targetId), source = byId(sourceId);
+        if (target && source && targetId !== sourceId) {
+          if (wouldCycle(targetId, sourceId)) { toast("⚠ That would create a loop"); return; }
+          if (!target.deps.includes(sourceId)) {
+            target.deps.push(sourceId); clampToDeps(target);
+            const sh = cascadeSchedule([targetId]); save(); render(); renderCP();
+            toast("🔗 “" + target.title + "” now starts after “" + source.title + "”" + (sh.length ? " · shifted " + sh.length : ""));
+          }
+        }
+      }
+    };
+    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+  }
+
   function projBarHtml(p, left, width, top, contL, contR) {
     const cat = state.categories.find(c => c.id === p.categoryId) || { color: "#0ea5e9" };
     const comp = projectCompletion(p).pct;
@@ -3313,10 +3496,7 @@
     if ($("calNext")) $("calNext").onclick = () => { const d = new Date(calMonth); if (mode === "month") d.setMonth(d.getMonth() + 1); else d.setDate(d.getDate() + 7); calMonth = d; renderCalendar(); };
     $("calToday").onclick = () => { calMonth = new Date(); renderCalendar(); };
     view.querySelectorAll(".cal-mode").forEach(b => b.onclick = () => { state.calMode = b.dataset.mode; save(); renderCalendar(); });
-    $("calCrit").onclick = () => {
-      state.calCritical = !state.calCritical; save(); renderCalendar();
-      toast(state.calCritical ? (_critAll.size ? "⚡ Critical path: " + _critAll.size + " projects" : "No linked projects to chain yet") : "Critical path off");
-    };
+    $("calCrit").onclick = () => openCriticalPath("all");
     // plan summary + baseline controls
     const projs = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
     if ($("calSummary")) {
@@ -3848,7 +4028,7 @@
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal")].forEach(mm => mm && mm.classList.remove("open"));
+      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal")].forEach(mm => mm && mm.classList.remove("open"));
       return;
     }
     const el = document.activeElement;

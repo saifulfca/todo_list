@@ -829,6 +829,57 @@
   .shot-lb-img { overflow: auto; padding: 12px; display: flex; justify-content: center; align-items: flex-start; background: var(--surface-2); }
   .shot-lb-img img { max-width: 100%; height: auto; border-radius: 8px; }
 
+  /* ---------- Tags rail (right) ---------- */
+  .tagbar { width: 232px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; transition: background .3s, border-color .3s; }
+  .tagbar-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-faint); font-weight: 700; padding: 20px 18px 10px; }
+  .tagbar-head button { background: none; border: none; color: var(--text-faint); font-size: 15px; cursor: pointer; width: 24px; height: 24px; border-radius: 6px; line-height: 1; }
+  .tagbar-head button:hover { background: var(--accent-soft); color: var(--accent); }
+  .tagbar-add { padding: 0 14px 10px; position: relative; }
+  .tagbar-add input { width: 100%; border: 1px solid var(--border); border-radius: 9px; padding: 8px 11px; font-family: var(--font); font-size: 13px; background: var(--surface-2); color: var(--text); outline: none; }
+  .tagbar-add input:focus { border-color: var(--accent); }
+  .tag-active-note { margin: 0 14px 8px; font-size: 11.5px; color: var(--accent); font-weight: 650; display: flex; align-items: center; gap: 6px; }
+  .tag-active-note button { margin-left: auto; background: none; border: none; color: var(--text-faint); cursor: pointer; font-weight: 700; font-size: 12px; }
+  .tag-active-note button:hover { color: var(--high); }
+  .tag-list { list-style: none; padding: 0 10px 16px; margin: 0; overflow-y: auto; flex: 1; }
+  .tag-item { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 2px; transition: background .15s; }
+  .tag-item:hover { background: var(--surface-2); }
+  .tag-item.active { background: var(--accent-soft); }
+  .tag-item.active .tag-name { color: var(--accent); font-weight: 700; }
+  .tag-hash { color: var(--text-faint); font-weight: 700; font-size: 13px; }
+  .tag-name { flex: 1; font-size: 13.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag-count { font-size: 11.5px; color: var(--text-faint); font-weight: 600; background: var(--surface-2); padding: 1px 8px; border-radius: 20px; }
+  .tag-item.active .tag-count { background: var(--surface); }
+  .tag-empty { padding: 10px 14px; font-size: 12px; color: var(--text-faint); line-height: 1.5; }
+
+  /* Shared autocomplete dropdown */
+  .tag-suggest { position: fixed; z-index: 9000; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); max-height: 240px; overflow-y: auto; min-width: 180px; padding: 4px; }
+  .tag-sug-item { padding: 7px 10px; border-radius: 7px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 7px; color: var(--text); }
+  .tag-sug-item:hover, .tag-sug-item.sel { background: var(--accent-soft); color: var(--accent); }
+  .tag-sug-item .tsc { margin-left: auto; font-size: 11px; color: var(--text-faint); font-weight: 600; }
+  .tag-sug-item.dupe { color: var(--med); font-weight: 650; }
+  .tag-sug-new { padding: 7px 10px; border-radius: 7px; font-size: 12.5px; cursor: pointer; color: var(--text-soft); display: flex; align-items: center; gap: 7px; }
+  .tag-sug-new:hover, .tag-sug-new.sel { background: var(--surface-2); }
+  .tag-sug-head { padding: 6px 10px 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); font-weight: 700; }
+
+  /* Tag maintenance modal */
+  .modal.tagmgr { max-width: 480px; width: 94%; text-align: left; }
+  .tagmgr-head { display: flex; align-items: center; justify-content: space-between; }
+  .tagmgr-head h3 { margin: 0; }
+  .tagmgr-sub { font-size: 12.5px; color: var(--text-soft); margin: 8px 0 14px; line-height: 1.5; }
+  .tagmgr-add { display: flex; gap: 8px; margin-bottom: 14px; position: relative; }
+  .tagmgr-add input { flex: 1; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-family: var(--font); font-size: 14px; background: var(--surface-2); color: var(--text); outline: none; }
+  .tagmgr-add input:focus { border-color: var(--accent); }
+  .tagmgr-list { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .tagmgr-row { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid var(--border); border-radius: 9px; }
+  .tagmgr-row input { flex: 1; border: 1px solid transparent; border-radius: 7px; padding: 6px 9px; font-family: var(--font); font-size: 13.5px; background: transparent; color: var(--text); outline: none; }
+  .tagmgr-row input:focus { border-color: var(--accent); background: var(--surface-2); }
+  .tagmgr-row .tmc { font-size: 11.5px; color: var(--text-faint); font-weight: 600; white-space: nowrap; }
+  .tagmgr-row .tm-del { background: none; border: none; color: var(--text-faint); font-size: 15px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+  .tagmgr-row .tm-del:hover { color: var(--high); background: var(--high-bg); }
+  .tagmgr-empty { font-size: 12.5px; color: var(--text-faint); padding: 8px 2px; }
+
+  @media (max-width: 1080px) { .tagbar { display: none; } }
+
   /* Critical Path pop-up (mini-Gantt) */
   .modal.cp { max-width: 980px; width: 94%; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; resize: both; min-width: min(520px, 94vw); min-height: min(340px, 70vh); }
   .modal.cp.cp-full { width: 100vw !important; height: 100vh !important; max-width: 100vw; max-height: 100vh; border-radius: 0; resize: none; }
@@ -1107,6 +1158,19 @@
     </div>
   </main>
 
+  <!-- Tags rail (right) -->
+  <aside class="tagbar" id="tagbar">
+    <div class="tagbar-head">
+      <span>🏷 Tags</span>
+      <button id="tagManageBtn" title="Manage tags — create, rename, delete">⚙</button>
+    </div>
+    <div class="tagbar-add">
+      <input type="text" id="tagRailInput" placeholder="Add or find a tag…" autocomplete="off" />
+    </div>
+    <div class="tag-active-note" id="tagActiveNote" style="display:none"></div>
+    <ul class="tag-list" id="tagList"></ul>
+  </aside>
+
   <!-- Category modal -->
   <div class="modal-back" id="catModal">
     <div class="modal">
@@ -1272,6 +1336,25 @@
     </div>
   </div>
 
+  <!-- Tag maintenance modal -->
+  <div class="modal-back" id="tagModal">
+    <div class="modal tagmgr">
+      <div class="tagmgr-head">
+        <h3>🏷 Manage tags</h3>
+        <button class="cp-x" id="tagModalClose" title="Close">✕</button>
+      </div>
+      <p class="tagmgr-sub">Create reusable tags for tasks &amp; projects. Similar names (e.g. <b>K-SOX</b> and <b>KSOX</b>) are treated as the same tag automatically.</p>
+      <div class="tagmgr-add">
+        <input type="text" id="tagNewInput" placeholder="New tag name…" autocomplete="off" />
+        <button class="btn-primary" id="tagAddBtn">Add tag</button>
+      </div>
+      <div class="tagmgr-list" id="tagMgrList"></div>
+    </div>
+  </div>
+
+  <!-- Shared tag autocomplete dropdown -->
+  <div class="tag-suggest" id="tagSuggest" style="display:none"></div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -1300,6 +1383,7 @@
   let activeCat = "all";
   let filter = "all";
   let search = "";
+  let activeTag = null;       // when set, the main list is filtered to tasks/projects carrying this tag
   let editingCatColor = COLORS[0];
   let expanded = new Set();   // UI-only: expanded task ids
   let focusSubFor = null;     // task id whose sub-add input to refocus after render
@@ -1330,6 +1414,7 @@
         { id: "other",    name: "Other",    color: "#f59e0b" }
       ],
       tasks: [],
+      tags: [],
       theme: "light",
       sortMode: "smart",
       google: { clientId: "", autoSync: true },
@@ -1400,6 +1485,7 @@
       data.showDrift = data.showDrift !== false;
       data.cpFull = !!data.cpFull;
       data.cpSize = (data.cpSize && data.cpSize.w) ? data.cpSize : null;
+      data.tags = Array.isArray(data.tags) ? data.tags.filter(x => typeof x === "string") : [];
       normalizeCats(data.categories);
       data.tasks = data.tasks.map(normalizeTask);
       return data;
@@ -1522,6 +1608,7 @@
     data.showDrift = data.showDrift !== false;
     data.cpFull = !!data.cpFull;
     data.cpSize = (data.cpSize && data.cpSize.w) ? data.cpSize : null;
+    data.tags = Array.isArray(data.tags) ? data.tags.filter(x => typeof x === "string") : [];
     normalizeCats(data.categories);
     data.tasks = (data.tasks || []).map(normalizeTask);
     state = data;
@@ -1614,9 +1701,182 @@
       <span class="cat-dot" style="background:${color}"></span>
       <span class="cat-name">${icon ? icon + " " : ""}${name}</span>
       ${count == null ? "" : `<span class="cat-count">${count}</span>`}`;
-    li.onclick = () => { activeCat = id; render(); document.body.classList.remove("nav-open"); };
+    li.onclick = () => { activeCat = id; activeTag = null; render(); document.body.classList.remove("nav-open"); };
     return li;
   }
+
+  // ---------- Tags rail ----------
+  function renderTags() {
+    const listEl = $("tagList"); if (!listEl) return;
+    const tags = knownTags();
+    tags.sort((a, b) => (tagCount(b) - tagCount(a)) || a.toLowerCase().localeCompare(b.toLowerCase()));
+    const note = $("tagActiveNote");
+    if (activeTag) {
+      note.style.display = "flex";
+      note.innerHTML = `Showing <b style="margin:0 3px">#${esc(activeTag)}</b> <button id="tagClearBtn" title="Clear tag filter">✕ clear</button>`;
+      const cb = $("tagClearBtn"); if (cb) cb.onclick = clearTag;
+    } else { note.style.display = "none"; note.innerHTML = ""; }
+    listEl.innerHTML = "";
+    if (!tags.length) {
+      listEl.innerHTML = `<li class="tag-empty">No tags yet. Add <b>+tag</b> in a task title, type in the box above, or tap ⚙ to create tags.</li>`;
+      return;
+    }
+    tags.forEach(tg => {
+      const li = document.createElement("li");
+      const active = activeTag && normTag(activeTag) === normTag(tg);
+      li.className = "tag-item" + (active ? " active" : "");
+      li.innerHTML = `<span class="tag-hash">#</span><span class="tag-name">${esc(tg)}</span><span class="tag-count">${tagCount(tg)}</span>`;
+      li.onclick = () => { if (active) clearTag(); else selectTag(tg); };
+      listEl.appendChild(li);
+    });
+  }
+
+  // ---------- Tag autocomplete (with fuzzy duplicate detection) ----------
+  function attachTagAutocomplete(input, opts) {
+    opts = opts || {};
+    const multi = !!opts.multi;             // comma-separated (composer / edit) vs single (rail / modal)
+    const box = $("tagSuggest");
+    let items = [], sel = -1;
+
+    function currentFrag() {
+      if (!multi) return input.value.trim();
+      const v = input.value, caret = (input.selectionStart == null ? v.length : input.selectionStart);
+      return v.slice(0, caret).split(",").pop().trim();
+    }
+    function usedKeys() {
+      if (!multi) return new Set();
+      return new Set(input.value.split(",").map(s => normTag(s)).filter(Boolean));
+    }
+    function place() {
+      const r = input.getBoundingClientRect();
+      box.style.left = r.left + "px";
+      box.style.top = (r.bottom + 4) + "px";
+      box.style.width = Math.max(180, r.width) + "px";
+    }
+    function hide() { box.style.display = "none"; box.__owner = null; items = []; sel = -1; }
+    function pick(tag) {
+      if (multi) {
+        const v = input.value, caret = (input.selectionStart == null ? v.length : input.selectionStart);
+        const before = v.slice(0, caret), after = v.slice(caret);
+        const parts = before.split(","); parts[parts.length - 1] = " " + tag;
+        const newBefore = parts.join(",").replace(/^\s+/, "");
+        input.value = (newBefore + ", " + after.replace(/^[\s,]+/, "")).replace(/\s{2,}/g, " ");
+        const pos = newBefore.length + 2;
+        input.focus(); try { input.setSelectionRange(pos, pos); } catch (e) {}
+      } else {
+        input.value = tag;
+      }
+      hide();
+      if (opts.onPick) opts.onPick(tag);
+    }
+    function draw() {
+      const frag = currentFrag();
+      if (frag.length < 1) { hide(); return; }
+      const fk = normTag(frag), used = usedKeys(), all = knownTags();
+      const starts = all.filter(tg => normTag(tg).startsWith(fk) && !used.has(normTag(tg)));
+      const incl = all.filter(tg => !normTag(tg).startsWith(fk) && normTag(tg).includes(fk) && !used.has(normTag(tg)));
+      const matches = starts.concat(incl).slice(0, 8);
+      const exact = all.find(tg => normTag(tg) === fk && tg.toLowerCase() !== frag.toLowerCase());
+      items = []; let html = "";
+      if (exact) {
+        html += `<div class="tag-sug-head">Already exists (same as your typing)</div>`;
+        items.push(exact);
+        html += `<div class="tag-sug-item dupe" data-i="${items.length - 1}">↵ Use existing:<b style="margin-left:4px">${esc(exact)}</b></div>`;
+      }
+      matches.forEach(tg => {
+        if (exact && normTag(tg) === fk) return;
+        items.push(tg);
+        html += `<div class="tag-sug-item" data-i="${items.length - 1}"><span>#${esc(tg)}</span><span class="tsc">${tagCount(tg)}</span></div>`;
+      });
+      if (!all.some(tg => normTag(tg) === fk)) {
+        items.push(frag);
+        html += `<div class="tag-sug-new" data-i="${items.length - 1}">＋ Create tag “<b>${esc(frag)}</b>”</div>`;
+      }
+      if (!items.length) { hide(); return; }
+      box.innerHTML = html; box.style.display = "block"; box.__owner = input; sel = -1;
+      place();
+      box.querySelectorAll("[data-i]").forEach(el => {
+        el.onmousedown = (e) => { e.preventDefault(); pick(items[+el.dataset.i]); };
+      });
+    }
+    input.addEventListener("input", draw);
+    input.addEventListener("focus", draw);
+    input.addEventListener("keydown", (e) => {
+      if (box.style.display === "none" || box.__owner !== input) return;
+      const els = box.querySelectorAll("[data-i]");
+      if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); }
+      else if (e.key === "Enter") { if (sel >= 0) { e.preventDefault(); pick(items[sel]); } return; }
+      else if (e.key === "Escape") { hide(); return; }
+      else return;
+      els.forEach((el, i) => el.classList.toggle("sel", i === sel));
+    });
+    input.addEventListener("blur", () => setTimeout(() => { if (box.__owner === input) hide(); }, 140));
+  }
+
+  // ---------- Tag maintenance (create / rename / delete predefined tags) ----------
+  function renameTag(oldTag, newName) {
+    newName = (newName || "").trim();
+    const oldKey = normTag(oldTag), newKey = normTag(newName);
+    if (!oldKey || !newKey) return false;
+    const collide = knownTags().filter(tg => normTag(tg) !== oldKey).find(tg => normTag(tg) === newKey);
+    const display = collide || newName;
+    state.tags = (state.tags || []).filter(tg => normTag(tg) !== oldKey && normTag(tg) !== newKey);
+    state.tags.push(display);
+    state.tasks.forEach(t => {
+      if (!t.tags || !t.tags.length) return;
+      const out = [], seen = {}; let changed = false;
+      t.tags.forEach(tg => {
+        let d = tg;
+        if (normTag(tg) === oldKey) { d = display; changed = true; }
+        const k = normTag(d);
+        if (k && !(k in seen)) { seen[k] = 1; out.push(d); } else changed = true;
+      });
+      if (changed) t.tags = out;
+    });
+    if (activeTag && normTag(activeTag) === oldKey) activeTag = display;
+    save();
+    return true;
+  }
+  function deleteTag(tag) {
+    const k = normTag(tag);
+    state.tags = (state.tags || []).filter(tg => normTag(tg) !== k);
+    state.tasks.forEach(t => { if (t.tags && t.tags.length) t.tags = t.tags.filter(tg => normTag(tg) !== k); });
+    if (activeTag && normTag(activeTag) === k) activeTag = null;
+    save();
+  }
+  function addTagFromModal() {
+    const inp = $("tagNewInput"); const v = inp.value.trim(); if (!v) return;
+    const existing = knownTags().find(tg => normTag(tg) === normTag(v));
+    if (existing) { toast("Already exists as “" + existing + "”"); inp.value = ""; renderTagMgr(); return; }
+    registerTag(v); save(); inp.value = ""; renderTagMgr(); renderTags();
+    toast("🏷 Tag “" + v + "” added");
+  }
+  function renderTagMgr() {
+    const box = $("tagMgrList"); if (!box) return;
+    const tags = knownTags().sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    box.innerHTML = "";
+    if (!tags.length) { box.innerHTML = `<div class="tagmgr-empty">No tags yet. Add one above — then use it while creating tasks &amp; projects.</div>`; return; }
+    tags.forEach(tg => {
+      const row = document.createElement("div"); row.className = "tagmgr-row";
+      const cnt = tagCount(tg);
+      row.innerHTML = `<span class="tag-hash">#</span><input type="text" value="${esc(tg)}" /><span class="tmc">${cnt} task${cnt === 1 ? "" : "s"}</span><button class="tm-del" title="Delete tag">🗑</button>`;
+      const input = row.querySelector("input");
+      input.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } };
+      input.onblur = () => {
+        const nv = input.value.trim();
+        if (nv && normTag(nv) && nv !== tg) { if (renameTag(tg, nv)) { renderTagMgr(); renderTags(); render(); toast("Renamed to “" + nv + "”"); } }
+        else input.value = tg;
+      };
+      row.querySelector(".tm-del").onclick = () => {
+        if (confirm("Delete tag “" + tg + "”? It will be removed from all tasks and projects.")) {
+          deleteTag(tg); renderTagMgr(); renderTags(); render(); toast("Tag deleted");
+        }
+      };
+      box.appendChild(row);
+    });
+  }
+  function openTagModal() { $("tagModal").classList.add("open"); renderTagMgr(); setTimeout(() => $("tagNewInput").focus(), 50); }
 
   function catItem(cat, isAll, archived) {
     const li = document.createElement("li");
@@ -1632,7 +1892,7 @@
         : `<button class="cat-act cat-arch" title="Archive notebook">📦</button><button class="cat-act cat-del" title="Delete notebook">✕</button>`}`;
     li.onclick = (e) => {
       if (e.target.closest(".cat-act")) return;
-      activeCat = cat.id; render();
+      activeCat = cat.id; activeTag = null; render();
       document.body.classList.remove("nav-open");
     };
     const del = li.querySelector(".cat-del"); if (del) del.onclick = (e) => { e.stopPropagation(); deleteCat(cat); };
@@ -1759,7 +2019,7 @@
     if (!cat) { toast("Create a notebook first"); return; }
 
     const fieldTags = $("taskTags").value.split(",").map(s => s.trim()).filter(Boolean);
-    const tags = Array.from(new Set([...q.tags, ...fieldTags]));
+    const tags = canonicalizeTags([...q.tags, ...fieldTags]);
     const fieldPrio = $("taskPriority").value;
     const priority = q.priority || fieldPrio || "med";
     const notes = $("taskNotes").value.trim();
@@ -1968,10 +2228,18 @@
 
   function endOfToday() { const d = new Date(); d.setHours(23, 59, 59, 999); return d.getTime(); }
   function scopeTasks() {
+    if (activeTag) { const k = normTag(activeTag); return state.tasks.filter(t => !isArchived(t.categoryId) && (t.tags || []).some(x => normTag(x) === k)); }
     if (activeCat === "all") return state.tasks.filter(t => !isArchived(t.categoryId));
     if (activeCat === "today") { const e = endOfToday(); return state.tasks.filter(t => !isArchived(t.categoryId) && t.deadline && new Date(t.deadline).getTime() <= e); }
     return state.tasks.filter(t => t.categoryId === activeCat);
   }
+  function selectTag(tag) {
+    const c = canonTag(tag); if (!c) return;
+    activeTag = c; activeCat = "all"; filter = "all"; search = ""; $("searchInput").value = "";
+    document.body.classList.remove("nav-open");
+    render();
+  }
+  function clearTag() { activeTag = null; render(); }
 
   function visibleTasks() {
     let arr = scopeTasks();
@@ -3010,6 +3278,17 @@
   $("cpModal").onclick = (e) => { if (e.target === $("cpModal")) $("cpModal").classList.remove("open"); };
   $("shotClose").onclick = () => $("shotModal").classList.remove("open");
   $("shotModal").onclick = (e) => { if (e.target === $("shotModal")) $("shotModal").classList.remove("open"); };
+  $("tagManageBtn").onclick = openTagModal;
+  $("tagModalClose").onclick = () => $("tagModal").classList.remove("open");
+  $("tagModal").onclick = (e) => { if (e.target === $("tagModal")) $("tagModal").classList.remove("open"); };
+  $("tagAddBtn").onclick = addTagFromModal;
+  attachTagAutocomplete($("tagNewInput"), { multi: false });
+  $("tagNewInput").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const box = $("tagSuggest");
+    if (box.style.display !== "none" && box.__owner === e.target && box.querySelector(".sel")) return;
+    e.preventDefault(); addTagFromModal();
+  });
   $("archBannerRestore").onclick = () => { if (activeCat && activeCat !== "all" && activeCat !== "today" && activeCat !== "insights") unarchiveCategory(activeCat); };
   $("fsCreate").onclick = () => FileStore.create();
   $("fsOpen").onclick = () => FileStore.open();
@@ -3030,8 +3309,9 @@
       : activeCat === "insights" ? { name: "📊 Insights", color: "#0ea5e9" }
       : activeCat === "calendar" ? { name: "🗓 Calendar", color: "#0ea5e9" }
       : state.categories.find(c => c.id === activeCat) || { name: "All Tasks", color: "#9089fc" };
-    catHeading.textContent = catObj.name;
-    catDot.style.background = catObj.color;
+    catHeading.textContent = activeTag ? ("🏷 #" + activeTag) : catObj.name;
+    catDot.style.background = activeTag ? "#8b5cf6" : catObj.color;
+    renderTags();
 
     // Full-view panels (Insights / Calendar) replace the task workflow
     const isInsights = activeCat === "insights";
@@ -4175,7 +4455,7 @@
 
     // tag click -> filter
     li.querySelectorAll(".tag").forEach(tg => {
-      tg.onclick = () => { search = tg.dataset.tag; $("searchInput").value = "#" + tg.dataset.tag; render(); };
+      tg.onclick = (e) => { e.stopPropagation(); selectTag(tg.dataset.tag); };
     });
 
     // subtasks
@@ -4199,7 +4479,7 @@
           const sh = setProjectDates(t, start, deadline);
           if (sh.length) toast("🔗 Shifted " + sh.length + " linked project" + (sh.length > 1 ? "s" : ""));
         }
-        else if (f === "tags") updateTask(t.id, { tags: el.value.split(",").map(s => s.trim()).filter(Boolean) });
+        else if (f === "tags") updateTask(t.id, { tags: canonicalizeTags(el.value.split(",")) });
         else if (f === "deadline") updateTask(t.id, { deadline: el.value || "" });
         else if (f === "durationMin") updateTask(t.id, { durationMin: parseInt(el.value) || 0 });
         else updateTask(t.id, { [f]: el.value });
@@ -4215,6 +4495,10 @@
       render();
       toast("Dependencies updated" + (sh.length ? " · shifted " + sh.length : ""));
     };
+
+    // tag autocomplete on the edit-mode Tags field
+    const tagsInput = li.querySelector('[data-edit="tags"]');
+    if (tagsInput) attachTagAutocomplete(tagsInput, { multi: true });
 
     // screenshot: view (lightbox), attach/replace, remove, paste
     li.querySelectorAll("[data-shotview]").forEach(el => {
@@ -4260,6 +4544,43 @@
 
   function prioDot(p) { return p === "high" ? "🔴" : p === "med" ? "🟡" : "🟢"; }
   function esc(s) { return (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+  // ---------- Tags (registry + fuzzy de-duplication) ----------
+  // Normalized key: lowercase, strip everything but a-z0-9 so "K-SOX", "KSOX", "k sox" all collapse to "ksox".
+  function normTag(s) { return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); }
+  // All known tags (predefined registry + any tag currently used on a task), de-duped by normalized key.
+  function knownTags() {
+    const map = {};
+    (state.tags || []).forEach(tg => { const k = normTag(tg); if (k && !(k in map)) map[k] = tg; });
+    (state.tasks || []).forEach(t => (t.tags || []).forEach(tg => { const k = normTag(tg); if (k && !(k in map)) map[k] = tg; }));
+    return Object.keys(map).map(k => map[k]);
+  }
+  // Given raw user input, return the existing canonical display form if one matches (prevents K-SOX/KSOX dupes), else the trimmed input.
+  function canonTag(input) {
+    const k = normTag(input); if (!k) return "";
+    const hit = knownTags().find(tg => normTag(tg) === k);
+    return hit || (input || "").trim();
+  }
+  // Add a tag to the predefined registry if its normalized key isn't already present.
+  function registerTag(tag) {
+    const k = normTag(tag); if (!k) return;
+    if (!state.tags) state.tags = [];
+    if (!state.tags.some(x => normTag(x) === k)) state.tags.push((tag || "").trim());
+  }
+  // Canonicalize + de-duplicate a list of raw tags, registering any new ones.
+  function canonicalizeTags(arr) {
+    const out = [], seen = {};
+    (arr || []).forEach(raw => {
+      const c = canonTag(raw); const k = normTag(c);
+      if (c && !(k in seen)) { seen[k] = 1; out.push(c); registerTag(c); }
+    });
+    return out;
+  }
+  // Count non-archived tasks/projects carrying a given tag (by normalized key).
+  function tagCount(tag) {
+    const k = normTag(tag);
+    return (state.tasks || []).filter(t => !isArchived(t.categoryId) && (t.tags || []).some(x => normTag(x) === k)).length;
+  }
 
   // ---------- Screenshot attachments ----------
   // Load an image source, downscale to a sane max dimension, and return a compressed data URL.
@@ -4341,6 +4662,20 @@
     if (found) e.preventDefault();
   });
 
+  // Tag autocomplete on the composer + Tags-rail inputs
+  attachTagAutocomplete($("taskTags"), { multi: true });
+  attachTagAutocomplete($("tagRailInput"), { multi: false, onPick: (tag) => { selectTag(tag); $("tagRailInput").value = ""; } });
+  $("tagRailInput").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const box = $("tagSuggest");
+    if (box.style.display !== "none" && box.__owner === e.target && box.querySelector(".sel")) return; // dropdown selection handled elsewhere
+    const v = e.target.value.trim(); if (!v) return;
+    e.preventDefault();
+    registerTag(canonTag(v)); save();
+    selectTag(v);
+    e.target.value = "";
+  });
+
   // Task / Project mode toggle
   function applyAddType() {
     addCard.classList.toggle("project-mode", addType === "project");
@@ -4365,7 +4700,7 @@
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal")].forEach(mm => mm && mm.classList.remove("open"));
+      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal"), $("tagModal")].forEach(mm => mm && mm.classList.remove("open"));
       return;
     }
     const el = document.activeElement;

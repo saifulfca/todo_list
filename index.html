@@ -797,6 +797,7 @@
   /* critical path */
   .cal-crit { border: none; background: none; color: var(--text-soft); font-family: var(--font); font-size: 12.5px; font-weight: 650; padding: 6px 12px; border-radius: 8px; cursor: pointer; margin-left: 8px; border: 1px solid var(--border); }
   .cal-crit.active { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
+  .cal-crit-open { margin-left: 4px; padding: 6px 9px; font-size: 13px; }
   html[data-theme="dark"] .cal-crit.active { background: #3a2e17; color: #fbbf24; }
   .cal-proj.crit { box-shadow: 0 0 0 2px #ef4444, 0 2px 6px rgba(0,0,0,.3); z-index: 4; }
   .cal-proj { overflow: visible; }
@@ -3663,7 +3664,8 @@
           <button class="cal-mode ${mode === "month" ? "active" : ""}" data-mode="month">Month</button>
           <button class="cal-mode ${mode === "week" ? "active" : ""}" data-mode="week">Week</button>
           <button class="cal-mode ${mode === "agenda" ? "active" : ""}" data-mode="agenda">Agenda</button>
-          <button class="cal-crit ${state.calCritical ? "active" : ""}" id="calCrit" title="Highlight the critical path across linked projects">⚡ Critical path</button>
+          <button class="cal-crit ${state.calCritical ? "active" : ""}" id="calCrit" role="switch" aria-checked="${state.calCritical ? "true" : "false"}" title="Show or hide the critical-path highlight on the calendar">⚡ Critical path: ${state.calCritical ? "ON" : "OFF"}</button>
+          <button class="cal-crit cal-crit-open" id="calCritOpen" title="Open the Critical Path planner (mini-Gantt)">↗</button>
         </div>
       </div>
       <div class="cal-tools">
@@ -3678,7 +3680,8 @@
     if ($("calNext")) $("calNext").onclick = () => { const d = new Date(calMonth); if (mode === "month") d.setMonth(d.getMonth() + 1); else d.setDate(d.getDate() + 7); calMonth = d; renderCalendar(); };
     $("calToday").onclick = () => { calMonth = new Date(); renderCalendar(); };
     view.querySelectorAll(".cal-mode").forEach(b => b.onclick = () => { state.calMode = b.dataset.mode; save(); renderCalendar(); });
-    $("calCrit").onclick = () => openCriticalPath("all");
+    $("calCrit").onclick = () => { state.calCritical = !state.calCritical; save(); renderCalendar(); toast(state.calCritical ? "⚡ Critical path shown on calendar" : "Critical path hidden"); };
+    if ($("calCritOpen")) $("calCritOpen").onclick = () => openCriticalPath("all");
     // plan summary + baseline controls
     const projs = state.tasks.filter(t => t.type === "project" && t.start && t.deadline);
     if ($("calSummary")) {

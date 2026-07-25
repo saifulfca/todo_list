@@ -802,6 +802,33 @@
   .cal-proj.crit { box-shadow: 0 0 0 2px #ef4444, 0 2px 6px rgba(0,0,0,.3); z-index: 4; }
   .cal-proj { overflow: visible; }
 
+  /* Screenshot attachments */
+  .shot-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px dashed var(--border); border-radius: 10px; padding: 8px 11px; background: var(--surface-2); outline: none; }
+  .shot-row:focus-within, .shot-row:focus { border-color: var(--accent); }
+  .shot-attach { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); border-radius: 8px; padding: 6px 11px; font-size: 12.5px; font-weight: 650; cursor: pointer; font-family: var(--font); }
+  .shot-attach:hover { border-color: var(--accent); color: var(--accent); }
+  .shot-hint { font-size: 11.5px; color: var(--text-faint); font-weight: 600; }
+  .shot-hint b { color: var(--text-soft); }
+  .shot-preview { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .shot-preview img { height: 40px; max-width: 120px; border-radius: 6px; border: 1px solid var(--border); object-fit: cover; }
+  .shot-del { background: none; border: none; color: var(--text-faint); font-size: 15px; cursor: pointer; line-height: 1; }
+  .shot-del:hover { color: var(--high); }
+  .shot-chip { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-soft); border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font); display: inline-flex; align-items: center; gap: 3px; }
+  .shot-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .shot-editor { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .shot-thumb-sm { height: 64px; max-width: 180px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover; cursor: zoom-in; }
+  .shot-add-sm { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); border-radius: 8px; padding: 6px 11px; font-size: 12.5px; font-weight: 650; cursor: pointer; font-family: var(--font); }
+  .shot-add-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .shot-del-sm { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 650; cursor: pointer; font-family: var(--font); }
+  .shot-del-sm:hover { border-color: var(--high); color: var(--high); }
+  .shot-lightbox { background: var(--surface); border-radius: 14px; overflow: hidden; max-width: 94vw; max-height: 92vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); }
+  .shot-lb-bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .shot-lb-title { font-size: 14px; font-weight: 700; color: var(--text); margin-right: auto; }
+  .shot-lb-btn { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-soft); border-radius: 8px; padding: 5px 11px; font-size: 12.5px; font-weight: 650; cursor: pointer; font-family: var(--font); text-decoration: none; }
+  .shot-lb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .shot-lb-img { overflow: auto; padding: 12px; display: flex; justify-content: center; align-items: flex-start; background: var(--surface-2); }
+  .shot-lb-img img { max-width: 100%; height: auto; border-radius: 8px; }
+
   /* Critical Path pop-up (mini-Gantt) */
   .modal.cp { max-width: 980px; width: 94%; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; resize: both; min-width: min(520px, 94vw); min-height: min(340px, 70vh); }
   .modal.cp.cp-full { width: 100vw !important; height: 100vh !important; max-width: 100vw; max-height: 100vh; border-radius: 0; resize: none; }
@@ -1003,6 +1030,15 @@
           <div class="add-details">
             <textarea id="taskNotes" placeholder="Notes / details (optional)"></textarea>
             <input type="text" class="text-in" id="taskTags" placeholder="Tags, comma separated (e.g. urgent, client, review)" />
+            <div class="shot-row" id="shotRow" tabindex="0" title="Attach a screenshot — click, or press Ctrl+V to paste from the clipboard">
+              <button type="button" class="shot-attach" id="shotAttach">📎 Attach screenshot</button>
+              <span class="shot-hint">or press <b>Ctrl+V</b> to paste from clipboard</span>
+              <input type="file" id="shotFile" accept="image/*" style="display:none" />
+              <div class="shot-preview" id="shotPreview" style="display:none">
+                <img id="shotThumb" alt="Screenshot preview" />
+                <button type="button" class="shot-del" id="shotRemove" title="Remove screenshot">✕</button>
+              </div>
+            </div>
             <div class="type-toggle" id="typeToggle">
               <button type="button" class="tt-btn active" data-type="task">✓ Task</button>
               <button type="button" class="tt-btn" data-type="project">📊 Project</button>
@@ -1224,6 +1260,18 @@
     </div>
   </div>
 
+  <!-- Screenshot lightbox -->
+  <div class="modal-back" id="shotModal">
+    <div class="shot-lightbox">
+      <div class="shot-lb-bar">
+        <span class="shot-lb-title" id="shotTitle">Screenshot</span>
+        <a class="shot-lb-btn" id="shotDownload" download="screenshot.png" title="Download image">⬇ Download</a>
+        <button class="shot-lb-btn" id="shotClose" title="Close">✕</button>
+      </div>
+      <div class="shot-lb-img"><img id="shotFull" alt="Attached screenshot" /></div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -1256,6 +1304,7 @@
   let expanded = new Set();   // UI-only: expanded task ids
   let focusSubFor = null;     // task id whose sub-add input to refocus after render
   let focusEditFor = null;    // task id whose Title field to focus after opening via card click
+  let composerShot = "";      // pending screenshot (data URL) attached in the add-task composer
   let dragId = null;
   let highlightId = null;     // task id to scroll to + flash after render
   let _justArchived = [];     // notebook names auto-archived by the last save
@@ -1316,6 +1365,7 @@
       createdAt: t.createdAt || Date.now(),
       completedAt: t.completedAt || null,
       recur: t.recur || "none",
+      shot: typeof t.shot === "string" ? t.shot : "",
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       tags: Array.isArray(t.tags) ? t.tags : [],
       deps: Array.isArray(t.deps) ? t.deps.filter(x => typeof x === "string") : [],
@@ -1620,6 +1670,7 @@
       createdAt: Date.now(),
       completedAt: null,
       recur: fields.recur || "none",
+      shot: fields.shot || "",
       subtasks: fields.subtasks || [],
       tags: fields.tags || [],
       deps: fields.deps || [],
@@ -1718,19 +1769,20 @@
       const end = $("taskDeadline").value || q.deadline || "";
       if (!end) { toast("Set an end date for the project"); return; }
       if (new Date(end) < new Date(start)) { toast("⚠ End is before start"); return; }
-      state.tasks.push(createTaskObj({ categoryId: cat, title: q.title, notes, priority, type: "project", start, deadline: end, tags }));
+      state.tasks.push(createTaskObj({ categoryId: cat, title: q.title, notes, priority, type: "project", start, deadline: end, tags, shot: composerShot }));
     } else {
       const fieldDeadline = $("taskDeadline").value;
       const fieldRecur = $("taskRecur").value;
       state.tasks.push(createTaskObj({
         categoryId: cat, title: q.title, notes, priority,
         deadline: fieldDeadline || q.deadline || "",
-        recur: fieldRecur !== "none" ? fieldRecur : q.recur, tags
+        recur: fieldRecur !== "none" ? fieldRecur : q.recur, tags, shot: composerShot
       }));
     }
 
     $("taskTitle").value = ""; $("taskNotes").value = ""; $("taskTags").value = "";
     $("taskDeadline").value = ""; $("taskStart").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
+    composerShot = ""; renderComposerShot();
     $("addCard").classList.remove("open");
     if (createdName) activeCat = cat; // jump to a freshly-created notebook so the item is visible
     save(); render();
@@ -1774,6 +1826,7 @@
         createdAt: Date.now(),
         completedAt: null,
         recur: t.recur,
+        shot: t.shot || "",
         subtasks: t.subtasks.map(s => ({ id: uid(), text: s.text, done: false })),
         tags: t.tags.slice(),
         order: minOrder() - 1,
@@ -2955,6 +3008,8 @@
   $("cpExport").onclick = exportCPImage;
   $("cpPrint").onclick = printCP;
   $("cpModal").onclick = (e) => { if (e.target === $("cpModal")) $("cpModal").classList.remove("open"); };
+  $("shotClose").onclick = () => $("shotModal").classList.remove("open");
+  $("shotModal").onclick = (e) => { if (e.target === $("shotModal")) $("shotModal").classList.remove("open"); };
   $("archBannerRestore").onclick = () => { if (activeCat && activeCat !== "all" && activeCat !== "today" && activeCat !== "insights") unarchiveCategory(activeCat); };
   $("fsCreate").onclick = () => FileStore.create();
   $("fsOpen").onclick = () => FileStore.open();
@@ -3997,6 +4052,7 @@
             ${driftBadge(t)}
             ${!isProject && t.recur !== "none" ? `<span class="badge recur">🔁 ${RECUR_LABEL[t.recur]}</span>` : ""}
             ${subTotal ? `<span class="badge sub">☑ ${subDone}/${subTotal}</span>` : ""}
+            ${t.shot ? `<button type="button" class="shot-chip" data-shotview="${t.id}" title="View attached screenshot">📎 Screenshot</button>` : ""}
             ${catBadge}
             ${tagsHtml}
           </div>
@@ -4085,6 +4141,12 @@
             <input type="text" class="text-in" data-edit="tags" value="${esc(t.tags.join(", "))}" />
           </div>
         </div>
+        <div class="detail-section-label" style="margin-top:12px">Screenshot</div>
+        <div class="shot-editor" data-shotedit="${t.id}" tabindex="0" title="Attach a screenshot — click here and press Ctrl+V to paste, or use the button">
+          ${t.shot
+            ? `<img class="shot-thumb-sm" data-shotview="${t.id}" src="${t.shot}" alt="Screenshot" title="Click to view full size"/><button type="button" class="shot-add-sm" data-shotadd="${t.id}">📎 Replace</button><button type="button" class="shot-del-sm" data-shotdel="${t.id}">Remove</button>`
+            : `<button type="button" class="shot-add-sm" data-shotadd="${t.id}">📎 Attach screenshot</button><span class="shot-hint">or click here &amp; press <b>Ctrl+V</b> to paste</span>`}
+        </div>
         <div class="detail-section-label" style="margin-top:12px">Notes</div>
         <textarea data-edit="notes" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 11px;font-family:var(--font);font-size:13.5px;background:var(--surface-2);color:var(--text);resize:vertical;min-height:50px;outline:none;">${esc(t.notes)}</textarea>
       </div>`;
@@ -4154,6 +4216,24 @@
       toast("Dependencies updated" + (sh.length ? " · shifted " + sh.length : ""));
     };
 
+    // screenshot: view (lightbox), attach/replace, remove, paste
+    li.querySelectorAll("[data-shotview]").forEach(el => {
+      el.onclick = (e) => { e.stopPropagation(); openShot(t.shot, t.title); };
+    });
+    const shotAddB = li.querySelector("[data-shotadd]");
+    if (shotAddB) shotAddB.onclick = () => {
+      const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+      inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) fileToImage(f, (d) => { if (d) { t.shot = d; save(); render(); toast("📎 Screenshot attached"); } else toast("⚠ Couldn't read that image"); }); };
+      inp.click();
+    };
+    const shotDelB = li.querySelector("[data-shotdel]");
+    if (shotDelB) shotDelB.onclick = () => { if (confirm("Remove this screenshot?")) { t.shot = ""; save(); render(); } };
+    const shotEd = li.querySelector("[data-shotedit]");
+    if (shotEd) shotEd.addEventListener("paste", (e) => {
+      const found = grabImageFromEvent(e, (d) => { if (d) { t.shot = d; save(); render(); toast("📎 Screenshot pasted"); } });
+      if (found) e.preventDefault();
+    });
+
     // drag & drop (manual mode, active tasks)
     if (state.sortMode === "manual" && !t.completed) {
       li.setAttribute("draggable", "true");
@@ -4181,6 +4261,61 @@
   function prioDot(p) { return p === "high" ? "🔴" : p === "med" ? "🟡" : "🟢"; }
   function esc(s) { return (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 
+  // ---------- Screenshot attachments ----------
+  // Load an image source, downscale to a sane max dimension, and return a compressed data URL.
+  function loadImageToDataUrl(src, cb) {
+    const img = new Image();
+    img.onload = () => {
+      const maxDim = 1800;
+      let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      if (!w || !h) { cb(src); return; }
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      w = Math.round(w * scale); h = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      let out;
+      try { out = canvas.toDataURL("image/jpeg", 0.85); } catch (e) { out = src; }
+      cb(out);
+    };
+    img.onerror = () => cb(null);
+    img.src = src;
+  }
+  // Read an image File/Blob into a compressed data URL.
+  function fileToImage(file, cb) {
+    if (!file || !/^image\//.test(file.type || "")) { cb(null); return; }
+    const fr = new FileReader();
+    fr.onload = () => loadImageToDataUrl(fr.result, cb);
+    fr.onerror = () => cb(null);
+    fr.readAsDataURL(file);
+  }
+  // Pull the first image out of a clipboard/drop event; returns true if one was found.
+  function grabImageFromEvent(e, cb) {
+    const items = (e.clipboardData && e.clipboardData.items) || (e.dataTransfer && e.dataTransfer.items) || [];
+    for (const it of items) {
+      if (it.kind === "file" && it.type && it.type.indexOf("image") === 0) {
+        const f = it.getAsFile();
+        if (f) { fileToImage(f, cb); return true; }
+      }
+    }
+    return false;
+  }
+  function openShot(dataUrl, title) {
+    if (!dataUrl) return;
+    $("shotFull").src = dataUrl;
+    $("shotDownload").href = dataUrl;
+    $("shotTitle").textContent = title ? ("Screenshot · " + title) : "Screenshot";
+    $("shotModal").classList.add("open");
+  }
+  function renderComposerShot() {
+    const prev = $("shotPreview"), thumb = $("shotThumb"), attach = $("shotAttach");
+    if (!prev) return;
+    if (composerShot) { thumb.src = composerShot; prev.style.display = "flex"; attach.textContent = "📎 Replace"; }
+    else { prev.style.display = "none"; thumb.removeAttribute("src"); attach.textContent = "📎 Attach screenshot"; }
+  }
+
   // ---------- Filters / sort ----------
   document.querySelectorAll(".chip").forEach(chip => {
     chip.onclick = () => { filter = chip.dataset.filter; render(); };
@@ -4192,6 +4327,19 @@
   $("taskTitle").addEventListener("focus", () => addCard.classList.add("open"));
   $("taskTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addTask(); } });
   $("addTaskBtn").onclick = addTask;
+
+  // Screenshot attach / upload / paste / remove in the composer
+  $("shotAttach").onclick = () => $("shotFile").click();
+  $("shotFile").onchange = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) fileToImage(f, (d) => { if (d) { composerShot = d; renderComposerShot(); toast("📎 Screenshot attached"); } else toast("⚠ Couldn't read that image"); });
+    e.target.value = "";
+  };
+  $("shotRemove").onclick = () => { composerShot = ""; renderComposerShot(); };
+  addCard.addEventListener("paste", (e) => {
+    const found = grabImageFromEvent(e, (d) => { if (d) { composerShot = d; renderComposerShot(); addCard.classList.add("open"); toast("📎 Screenshot pasted"); } });
+    if (found) e.preventDefault();
+  });
 
   // Task / Project mode toggle
   function applyAddType() {
@@ -4209,7 +4357,7 @@
     b.onclick = () => { addType = b.dataset.type; addCard.classList.add("open"); applyAddType(); if (addType === "project" && !$("taskStart").value) $("taskStart").value = toLocalInput(new Date()); };
   });
   document.addEventListener("click", e => {
-    if (!addCard.contains(e.target) && !$("taskTitle").value && !$("taskNotes").value && !$("taskTags").value)
+    if (!addCard.contains(e.target) && !$("taskTitle").value && !$("taskNotes").value && !$("taskTags").value && !composerShot)
       addCard.classList.remove("open");
   });
 
@@ -4217,7 +4365,7 @@
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal")].forEach(mm => mm && mm.classList.remove("open"));
+      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal")].forEach(mm => mm && mm.classList.remove("open"));
       return;
     }
     const el = document.activeElement;

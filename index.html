@@ -895,6 +895,44 @@
   .dep-adder select:focus { border-color: var(--accent); }
   .dep-hint { font-size: 11px; color: var(--text-faint); margin-top: 6px; }
 
+  /* ---------- Settings ---------- */
+  .modal.settings { max-width: 560px; width: 96%; max-height: 90vh; display: flex; flex-direction: column; text-align: left; padding: 0; }
+  .set-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+  .set-head h3 { margin: 0; font-size: 18px; }
+  .set-body { overflow-y: auto; padding: 8px 22px 22px; }
+  .set-sec { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .set-sec:last-child { border-bottom: none; }
+  .set-sec h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-faint); font-weight: 700; margin: 0 0 14px; }
+  .set-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .set-row.col { flex-direction: column; align-items: stretch; gap: 9px; }
+  .set-row:last-child { margin-bottom: 0; }
+  .set-lbl { font-size: 13.5px; font-weight: 650; color: var(--text); min-width: 84px; }
+  .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .seg button { border: none; background: none; color: var(--text-soft); font-family: var(--font); font-size: 12.5px; font-weight: 650; padding: 6px 12px; border-radius: 7px; cursor: pointer; transition: all .15s; }
+  .seg button.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+  .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .theme-opt { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--border); border-radius: 10px; padding: 8px 10px; cursor: pointer; background: var(--surface-2); transition: border-color .15s; }
+  .theme-opt:hover { border-color: var(--text-faint); }
+  .theme-opt.active { border-color: var(--accent); background: var(--accent-soft); }
+  .theme-sw { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+  .theme-nm { font-size: 12.5px; font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .font-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .font-opt { border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; background: var(--surface-2); transition: border-color .15s; }
+  .font-opt:hover { border-color: var(--text-faint); }
+  .font-opt.active { border-color: var(--accent); background: var(--accent-soft); }
+  .font-opt .fo-name { font-size: 11px; color: var(--text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+  .font-opt .fo-sample { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .set-toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; cursor: pointer; }
+  .set-toggle .stg-txt { display: flex; flex-direction: column; gap: 2px; }
+  .set-toggle .stg-txt b { font-size: 13.5px; font-weight: 650; color: var(--text); }
+  .set-toggle .stg-txt small { font-size: 12px; color: var(--text-faint); line-height: 1.4; }
+  .set-storage { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--text-soft); margin-bottom: 12px; line-height: 1.5; }
+  .set-storage b { color: var(--text); }
+  .set-storage .ss-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); margin-right: 7px; }
+  .set-storage .ss-dot.on { background: var(--low); }
+  .set-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .set-note { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; margin-top: 12px; }
+
   /* Critical Path pop-up (mini-Gantt) */
   .modal.cp { max-width: 980px; width: 94%; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; resize: both; min-width: min(520px, 94vw); min-height: min(340px, 70vh); }
   .modal.cp.cp-full { width: 100vw !important; height: 100vh !important; max-width: 100vw; max-height: 100vh; border-radius: 0; resize: none; }
@@ -1062,6 +1100,7 @@
       </button>
       <button class="icon-btn" id="remindBtn" title="Turn on due reminders">🔕</button>
       <button class="icon-btn" id="themeToggle" title="Toggle dark mode">🌙</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
     </div>
 
     <div class="content">
@@ -1351,6 +1390,67 @@
     </div>
   </div>
 
+  <!-- Settings modal -->
+  <div class="modal-back" id="settingsModal">
+    <div class="modal settings">
+      <div class="set-head">
+        <h3>⚙️ Settings</h3>
+        <button class="cp-x" id="settingsClose" title="Close">✕</button>
+      </div>
+      <div class="set-body">
+        <section class="set-sec">
+          <h4>Appearance</h4>
+          <div class="set-row">
+            <span class="set-lbl">Mode</span>
+            <div class="seg" id="setMode">
+              <button data-mode="light">☀️ Light</button>
+              <button data-mode="dark">🌙 Dark</button>
+            </div>
+          </div>
+          <div class="set-row col">
+            <span class="set-lbl">Color theme</span>
+            <div class="theme-grid" id="setThemes"></div>
+          </div>
+          <div class="set-row col">
+            <span class="set-lbl">Font</span>
+            <div class="font-grid" id="setFonts"></div>
+          </div>
+          <div class="set-row">
+            <span class="set-lbl">Text size</span>
+            <div class="seg" id="setScale"></div>
+          </div>
+        </section>
+
+        <section class="set-sec">
+          <h4>Behavior</h4>
+          <label class="set-toggle">
+            <span class="stg-txt"><b>Auto-archive completed notebooks</b><small>Notebooks whose tasks are all done move to Archived automatically.</small></span>
+            <span class="switch sm"><input type="checkbox" id="setAutoArch" /><span class="track"></span></span>
+          </label>
+          <label class="set-toggle">
+            <span class="stg-txt"><b>Auto-save to data file</b><small>Write changes to your linked file automatically as you work.</small></span>
+            <span class="switch sm"><input type="checkbox" id="setAutoSave" /><span class="track"></span></span>
+          </label>
+          <label class="set-toggle">
+            <span class="stg-txt"><b>Due reminders</b><small>Desktop notifications shortly before a task is due.</small></span>
+            <span class="switch sm"><input type="checkbox" id="setRemind" /><span class="track"></span></span>
+          </label>
+        </section>
+
+        <section class="set-sec">
+          <h4>Data &amp; storage location</h4>
+          <div class="set-storage" id="setStorage"></div>
+          <div class="set-actions">
+            <button class="btn-primary" id="setChooseFile">📁 Choose where to save…</button>
+            <button class="btn-ghost" id="setSaveNow">💾 Save now</button>
+            <button class="btn-ghost" id="setBackup">⬇ Export backup</button>
+          </div>
+          <p class="set-note">Browsers can't set a folder path silently — click <b>Choose where to save</b> to pick any folder/file on your PC via the system dialog; the app then auto-saves there. For a hands-off fixed path, launch via <b>Start TaskNest.bat</b>.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
   <!-- Tag maintenance modal -->
   <div class="modal-back" id="tagModal">
     <div class="modal tagmgr">
@@ -1431,6 +1531,10 @@
       tasks: [],
       tags: [],
       theme: "light",
+      accent: "indigo",
+      font: "system",
+      uiScale: 1,
+      autoSave: true,
       sortMode: "smart",
       google: { clientId: "", autoSync: true },
       remind: false,
@@ -1511,8 +1615,10 @@
     _justArchived = applyAutoArchive();
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
     catch (e) { toast("⚠ Could not save — storage may be full"); }
-    if (typeof ServerStore !== "undefined" && ServerStore.active) ServerStore.scheduleWrite();
-    if (typeof FileStore !== "undefined" && FileStore.handle) FileStore.scheduleWrite();
+    if (state.autoSave !== false) {
+      if (typeof ServerStore !== "undefined" && ServerStore.active) ServerStore.scheduleWrite();
+      if (typeof FileStore !== "undefined" && FileStore.handle) FileStore.scheduleWrite();
+    }
   }
 
   // ---------- Archiving ----------
@@ -1609,6 +1715,10 @@
   // Normalize + adopt a loaded data object (from a file or backup) as current state
   function applyLoadedData(data) {
     data.theme = data.theme || "light";
+    data.accent = typeof data.accent === "string" ? data.accent : "indigo";
+    data.font = typeof data.font === "string" ? data.font : "system";
+    data.uiScale = (typeof data.uiScale === "number" && data.uiScale > 0) ? data.uiScale : 1;
+    data.autoSave = data.autoSave !== false;
     data.sortMode = data.sortMode || "smart";
     data.google = data.google && typeof data.google === "object"
       ? { clientId: data.google.clientId || "", autoSync: data.google.autoSync !== false }
@@ -1657,15 +1767,111 @@
   const catList = $("catList"), taskList = $("taskList"), statsRow = $("statsRow");
   const catHeading = $("catHeading"), catDot = $("catDot"), emptyState = $("emptyState");
 
-  // ---------- Theme ----------
+  // ---------- Theme & preferences ----------
+  const THEMES = [
+    { id: "indigo",  name: "Indigo",   accent: "#4f46e5" },
+    { id: "violet",  name: "Violet",   accent: "#7c3aed" },
+    { id: "blue",    name: "Sky",      accent: "#2563eb" },
+    { id: "ocean",   name: "Ocean",    accent: "#0ea5e9" },
+    { id: "teal",    name: "Teal",     accent: "#0d9488" },
+    { id: "emerald", name: "Emerald",  accent: "#059669" },
+    { id: "lime",    name: "Lime",     accent: "#65a30d" },
+    { id: "amber",   name: "Amber",    accent: "#d97706" },
+    { id: "rose",    name: "Rose",     accent: "#e11d48" },
+    { id: "crimson", name: "Sunset",   accent: "#f43f5e" },
+    { id: "fuchsia", name: "Fuchsia",  accent: "#c026d3" },
+    { id: "slate",   name: "Graphite", accent: "#475569" }
+  ];
+  const FONTS = [
+    { id: "system", name: "System",     stack: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' },
+    { id: "inter",  name: "Sans",       stack: '"Segoe UI", "Inter", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif' },
+    { id: "rounded",name: "Rounded",    stack: '"Trebuchet MS", "Segoe UI", Verdana, "DejaVu Sans", sans-serif' },
+    { id: "serif",  name: "Serif",      stack: 'Georgia, "Times New Roman", "Cambria", serif' },
+    { id: "slab",   name: "Slab",       stack: '"Rockwell", "Roboto Slab", Georgia, serif' },
+    { id: "mono",   name: "Monospace",  stack: '"Consolas", "SFMono-Regular", "Menlo", "Courier New", monospace' }
+  ];
+  const SCALES = [
+    { v: 0.9, name: "Compact" },
+    { v: 1,   name: "Default" },
+    { v: 1.1, name: "Comfortable" },
+    { v: 1.25, name: "Large" }
+  ];
+  function hexA(hex, a) {
+    const n = (hex || "#000000").replace("#", "");
+    const r = parseInt(n.slice(0, 2), 16) || 0, g = parseInt(n.slice(2, 4), 16) || 0, b = parseInt(n.slice(4, 6), 16) || 0;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  function applyPrefs() {
+    const el = document.documentElement;
+    const th = THEMES.find(t => t.id === state.accent) || THEMES[0];
+    el.style.setProperty("--accent", th.accent);
+    el.style.setProperty("--accent-soft", hexA(th.accent, state.theme === "dark" ? 0.24 : 0.12));
+    const f = FONTS.find(x => x.id === state.font) || FONTS[0];
+    el.style.setProperty("--font", f.stack);
+    const scale = state.uiScale || 1;
+    el.style.zoom = scale === 1 ? "" : String(scale);
+  }
   function applyTheme() {
     document.documentElement.setAttribute("data-theme", state.theme);
     $("themeToggle").textContent = state.theme === "dark" ? "☀️" : "🌙";
+    applyPrefs();
   }
   $("themeToggle").onclick = () => {
     state.theme = state.theme === "dark" ? "light" : "dark";
     applyTheme(); save();
   };
+
+  // ---------- Settings panel ----------
+  function renderSettingsStorage() {
+    const box = $("setStorage"); if (!box) return;
+    let html;
+    if (typeof ServerStore !== "undefined" && ServerStore.active) {
+      html = `<span class="ss-dot on"></span><b>Seamless local mode</b> — auto-saved to <b>tasknest-data.json</b> next to the launcher on your PC.`;
+    } else if (typeof FileStore !== "undefined" && FileStore.supported) {
+      if (FileStore.handle && !FileStore.needsReconnect) {
+        html = `<span class="ss-dot on"></span>Auto-saving to <b>${esc(FileStore.handle.name || "your data file")}</b>${FileStore.lastSaved ? " · last saved " + FileStore.savedLabel() : ""}.`;
+      } else if (FileStore.handle && FileStore.needsReconnect) {
+        html = `<span class="ss-dot"></span>Linked to <b>${esc(FileStore.handle.name || "a file")}</b> — click <b>Choose where to save</b> to reconnect.`;
+      } else {
+        html = `<span class="ss-dot"></span>Not linked to a file yet. Data is kept in this browser; choose a file to also keep it on disk.`;
+      }
+    } else {
+      html = `<span class="ss-dot"></span>This browser can't auto-save to a file. Use <b>Export backup</b> to save a copy, or open in Chrome/Edge on Windows.`;
+    }
+    box.innerHTML = html;
+  }
+  function renderSettings() {
+    document.querySelectorAll("#setMode button").forEach(b => b.classList.toggle("active", b.dataset.mode === state.theme));
+    const tg = $("setThemes"); tg.innerHTML = "";
+    THEMES.forEach(th => {
+      const d = document.createElement("div");
+      d.className = "theme-opt" + (state.accent === th.id ? " active" : "");
+      d.innerHTML = `<span class="theme-sw" style="background:${th.accent}"></span><span class="theme-nm">${th.name}</span>`;
+      d.onclick = () => { state.accent = th.id; applyPrefs(); save(); renderSettings(); };
+      tg.appendChild(d);
+    });
+    const fg = $("setFonts"); fg.innerHTML = "";
+    FONTS.forEach(f => {
+      const d = document.createElement("div");
+      d.className = "font-opt" + (state.font === f.id ? " active" : "");
+      d.innerHTML = `<div class="fo-name">${esc(f.name)}</div><div class="fo-sample" style="font-family:${f.stack.replace(/"/g, "&quot;")}">Aa Bb 123</div>`;
+      d.onclick = () => { state.font = f.id; applyPrefs(); save(); renderSettings(); };
+      fg.appendChild(d);
+    });
+    const sg = $("setScale"); sg.innerHTML = "";
+    SCALES.forEach(sc => {
+      const b = document.createElement("button");
+      b.textContent = sc.name;
+      if (Math.abs((state.uiScale || 1) - sc.v) < 0.001) b.className = "active";
+      b.onclick = () => { state.uiScale = sc.v; applyPrefs(); save(); renderSettings(); };
+      sg.appendChild(b);
+    });
+    $("setAutoArch").checked = state.autoArchive !== false;
+    $("setAutoSave").checked = state.autoSave !== false;
+    $("setRemind").checked = !!state.remind;
+    renderSettingsStorage();
+  }
+  function openSettings() { renderSettings(); $("settingsModal").classList.add("open"); }
 
   // ---------- Categories ----------
   function renderCats() {
@@ -3293,6 +3499,27 @@
   $("cpModal").onclick = (e) => { if (e.target === $("cpModal")) $("cpModal").classList.remove("open"); };
   $("shotClose").onclick = () => $("shotModal").classList.remove("open");
   $("shotModal").onclick = (e) => { if (e.target === $("shotModal")) $("shotModal").classList.remove("open"); };
+  $("settingsBtn").onclick = openSettings;
+  $("settingsClose").onclick = () => $("settingsModal").classList.remove("open");
+  $("settingsModal").onclick = (e) => { if (e.target === $("settingsModal")) $("settingsModal").classList.remove("open"); };
+  document.querySelectorAll("#setMode button").forEach(b => {
+    b.onclick = () => { state.theme = b.dataset.mode; applyTheme(); save(); renderSettings(); };
+  });
+  $("setAutoArch").onchange = (e) => { state.autoArchive = e.target.checked; save(); render(); renderSettings(); toast(e.target.checked ? "Auto-archive on" : "Auto-archive off"); };
+  $("setAutoSave").onchange = (e) => { state.autoSave = e.target.checked; save(); if (e.target.checked && typeof FileStore !== "undefined" && FileStore.handle) FileStore.writeNow(); renderSettings(); toast(e.target.checked ? "Auto-save on" : "Auto-save off"); };
+  $("setRemind").onchange = async () => { await Remind.toggle(); renderSettings(); };
+  $("setChooseFile").onclick = () => {
+    if (typeof FileStore === "undefined" || !FileStore.supported) { toast("Not supported here — use Export backup instead"); return; }
+    Promise.resolve(FileStore.create()).then(() => renderSettingsStorage());
+  };
+  $("setSaveNow").onclick = () => {
+    save();
+    if (typeof FileStore !== "undefined" && FileStore.handle) FileStore.writeNow();
+    else if (typeof ServerStore !== "undefined" && ServerStore.active) ServerStore.scheduleWrite();
+    toast("Saved ✓"); renderSettingsStorage();
+  };
+  $("setBackup").onclick = () => { $("settingsModal").classList.remove("open"); $("exportBtn").click(); };
+
   $("tagManageBtn").onclick = openTagModal;
   $("tagModalClose").onclick = () => $("tagModal").classList.remove("open");
   $("tagModal").onclick = (e) => { if (e.target === $("tagModal")) $("tagModal").classList.remove("open"); };
@@ -4771,7 +4998,7 @@
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal"), $("tagModal")].forEach(mm => mm && mm.classList.remove("open"));
+      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal"), $("tagModal"), $("settingsModal")].forEach(mm => mm && mm.classList.remove("open"));
       return;
     }
     const el = document.activeElement;

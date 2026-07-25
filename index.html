@@ -280,7 +280,8 @@
   .task.dragging { opacity: .4; }
   .task.drag-over { border-top: 2px dashed var(--accent); }
 
-  .task-head { display: flex; align-items: flex-start; gap: 13px; padding: 14px 16px; }
+  .task-head { display: flex; align-items: flex-start; gap: 13px; padding: 14px 16px; cursor: pointer; }
+  .task-head .task-title { cursor: pointer; }
   .drag-handle {
     cursor: grab; color: var(--text-faint); font-size: 15px; padding-top: 2px;
     display: none; user-select: none;
@@ -1253,6 +1254,7 @@
   let editingCatColor = COLORS[0];
   let expanded = new Set();   // UI-only: expanded task ids
   let focusSubFor = null;     // task id whose sub-add input to refocus after render
+  let focusEditFor = null;    // task id whose Title field to focus after opening via card click
   let dragId = null;
   let highlightId = null;     // task id to scroll to + flash after render
   let _justArchived = [];     // notebook names auto-archived by the last save
@@ -3006,6 +3008,12 @@
       focusSubFor = null;
     }
 
+    if (focusEditFor) {
+      const el = taskList.querySelector('.task[data-id="' + focusEditFor + '"] [data-edit="title"]');
+      if (el) { el.focus(); el.select && el.select(); }
+      focusEditFor = null;
+    }
+
     if (highlightId) {
       const el = taskList.querySelector('.task[data-id="' + highlightId + '"]');
       if (el) {
@@ -3594,7 +3602,9 @@
           if (wouldCycle(targetId, sourceId)) { toast("⚠ That would create a loop"); return; }
           if (!target.deps.includes(sourceId)) {
             target.deps.push(sourceId); clampToDeps(target);
-            const sh = cascadeSchedule([targetId]); save(); render(); renderCP();
+            const sh = cascadeSchedule([targetId]); save();
+            Google.autoSync(target); sh.forEach(sid => { const s = byId(sid); if (s) Google.autoSync(s); });
+            render(); renderCP();
             toast("🔗 “" + target.title + "” now starts after “" + source.title + "”" + (sh.length ? " · shifted " + sh.length : ""));
           }
         }
@@ -4023,6 +4033,10 @@
         </div>
         <div class="detail-section-label">Edit</div>
         <div class="detail-edit">
+          <div class="field" style="flex:1 1 100%;min-width:180px">
+            <label>Title</label>
+            <input type="text" class="text-in" data-edit="title" value="${esc(t.title)}" />
+          </div>
           <div class="field">
             <label>Priority</label>
             <select data-edit="priority">
@@ -4085,20 +4099,14 @@
       render();
     };
 
-    // inline title edit
-    const titleEl = li.querySelector("[data-title]");
-    titleEl.ondblclick = () => {
-      titleEl.setAttribute("contenteditable", "true");
-      titleEl.focus();
-      document.execCommand && document.getSelection().selectAllChildren(titleEl);
-    };
-    titleEl.onblur = () => {
-      titleEl.removeAttribute("contenteditable");
-      const v = titleEl.textContent.trim();
-      if (v && v !== t.title) { updateTask(t.id, { title: v }); }
-      else titleEl.textContent = t.title;
-    };
-    titleEl.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); titleEl.blur(); } };
+    // click anywhere on the card (except interactive controls) to open it in edit mode
+    const head = li.querySelector(".task-head");
+    head.addEventListener("click", (e) => {
+      if (e.target.closest(".check, .drag-handle, .task-actions, .gpush, .tag, button, input, select, textarea, a")) return;
+      if (expanded.has(t.id)) expanded.delete(t.id); else expanded.add(t.id);
+      focusEditFor = expanded.has(t.id) ? t.id : null;
+      render();
+    });
 
     // tag click -> filter
     li.querySelectorAll(".tag").forEach(tg => {
@@ -4120,11 +4128,16 @@
     li.querySelectorAll("[data-edit]").forEach(el => {
       el.onchange = () => {
         const f = el.getAttribute("data-edit");
-        if (f === "tags") updateTask(t.id, { tags: el.value.split(",").map(s => s.trim()).filter(Boolean) });
+        if (isProject && (f === "start" || f === "deadline")) {
+          const start = f === "start" ? (el.value || "") : t.start;
+          const deadline = f === "deadline" ? (el.value || "") : t.deadline;
+          const sh = setProjectDates(t, start, deadline);
+          if (sh.length) toast("🔗 Shifted " + sh.length + " linked project" + (sh.length > 1 ? "s" : ""));
+        }
+        else if (f === "tags") updateTask(t.id, { tags: el.value.split(",").map(s => s.trim()).filter(Boolean) });
         else if (f === "deadline") updateTask(t.id, { deadline: el.value || "" });
         else if (f === "durationMin") updateTask(t.id, { durationMin: parseInt(el.value) || 0 });
         else updateTask(t.id, { [f]: el.value });
-        if (isProject && (f === "start" || f === "deadline")) { clampToDeps(t); const sh = cascadeSchedule([t.id]); if (sh.length) { save(); toast("🔗 Shifted " + sh.length + " linked project" + (sh.length > 1 ? "s" : "")); } }
         render();
       };
     });
@@ -4133,7 +4146,8 @@
       const chosen = Array.from(depsSel.selectedOptions).map(o => o.value).filter(v => v && !wouldCycle(t.id, v));
       t.deps = chosen; clampToDeps(t);
       const sh = cascadeSchedule([t.id]);
-      save(); render();
+      save(); Google.autoSync(t); sh.forEach(sid => { const s = byId(sid); if (s) Google.autoSync(s); });
+      render();
       toast("Dependencies updated" + (sh.length ? " · shifted " + sh.length : ""));
     };
 

@@ -933,6 +933,23 @@
   .set-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .set-note { font-size: 11.5px; color: var(--text-faint); line-height: 1.5; margin-top: 12px; }
 
+  /* ---------- Custom recurrence modal ---------- */
+  .modal.recur-modal { max-width: 440px; width: 94%; text-align: left; padding: 0; }
+  .recur-body { padding: 18px 22px 6px; }
+  .recur-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .recur-row.col { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .recur-lbl { font-size: 13px; font-weight: 650; color: var(--text-soft); }
+  .recur-row input[type="number"] { width: 66px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-family: var(--font); font-size: 13.5px; background: var(--surface-2); color: var(--text); outline: none; }
+  .recur-row select { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-family: var(--font); font-size: 13.5px; background: var(--surface-2); color: var(--text); outline: none; }
+  .recur-row input:focus, .recur-row select:focus { border-color: var(--accent); }
+  .dow-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .dow-row .dow { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-soft); font-family: var(--font); font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all .12s; }
+  .dow-row .dow.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .recur-radio { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text); font-weight: 550; cursor: pointer; }
+  .recur-radio input[type="date"], .recur-radio input[type="number"] { border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; font-family: var(--font); font-size: 13px; background: var(--surface-2); color: var(--text); outline: none; }
+  .recur-radio input[type="number"] { width: 62px; }
+  .recur-actions { padding: 12px 22px 18px; display: flex; justify-content: space-between; gap: 10px; }
+
   /* Critical Path pop-up (mini-Gantt) */
   .modal.cp { max-width: 980px; width: 94%; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; resize: both; min-width: min(520px, 94vw); min-height: min(340px, 70vh); }
   .modal.cp.cp-full { width: 100vw !important; height: 100vh !important; max-width: 100vw; max-height: 100vh; border-radius: 0; resize: none; }
@@ -1172,6 +1189,7 @@
                   <option value="daily">🔁 Daily</option>
                   <option value="weekly">🔁 Weekly</option>
                   <option value="monthly">🔁 Monthly</option>
+                  <option value="custom">⚙️ Custom…</option>
                 </select>
               </div>
               <button class="add-btn" id="addTaskBtn">Add Task</button>
@@ -1390,6 +1408,42 @@
     </div>
   </div>
 
+  <!-- Custom recurrence modal -->
+  <div class="modal-back" id="recurModal">
+    <div class="modal recur-modal">
+      <div class="set-head">
+        <h3>🔁 Custom recurrence</h3>
+        <button class="cp-x" id="recurCancel" title="Cancel">✕</button>
+      </div>
+      <div class="recur-body">
+        <div class="recur-row">
+          <span class="recur-lbl">Repeat every</span>
+          <input type="number" id="recurInterval" min="1" max="99" value="1" />
+          <select id="recurFreq">
+            <option value="day">day(s)</option>
+            <option value="week" selected>week(s)</option>
+            <option value="month">month(s)</option>
+            <option value="year">year(s)</option>
+          </select>
+        </div>
+        <div class="recur-row col" id="recurDaysRow">
+          <span class="recur-lbl">Repeat on</span>
+          <div class="dow-row" id="recurDows"></div>
+        </div>
+        <div class="recur-row col">
+          <span class="recur-lbl">Ends</span>
+          <label class="recur-radio"><input type="radio" name="recurEnd" value="never" checked /> <span>Never</span></label>
+          <label class="recur-radio"><input type="radio" name="recurEnd" value="on" /> <span>On</span> <input type="date" id="recurEndDate" /></label>
+          <label class="recur-radio"><input type="radio" name="recurEnd" value="after" /> <span>After</span> <input type="number" id="recurEndCount" min="1" max="999" value="13" /> <span>occurrences</span></label>
+        </div>
+      </div>
+      <div class="modal-actions recur-actions">
+        <button class="btn-ghost" id="recurClear">Turn off repeat</button>
+        <button class="btn-primary" id="recurDone">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings modal -->
   <div class="modal-back" id="settingsModal">
     <div class="modal settings">
@@ -1504,6 +1558,8 @@
   let focusSubFor = null;     // task id whose sub-add input to refocus after render
   let focusEditFor = null;    // task id whose Title field to focus after opening via card click
   let composerShot = "";      // pending screenshot (data URL) attached in the add-task composer
+  let composerRecurRule = null; // pending custom recurrence rule set in the composer
+  let recurOnSave = null;     // callback for the currently-open recurrence modal
   let dragId = null;
   let highlightId = null;     // task id to scroll to + flash after render
   let _justArchived = [];     // notebook names auto-archived by the last save
@@ -1569,6 +1625,8 @@
       createdAt: t.createdAt || Date.now(),
       completedAt: t.completedAt || null,
       recur: t.recur || "none",
+      recurRule: sanitizeRule(t.recurRule),
+      recurDone: (typeof t.recurDone === "number" && t.recurDone >= 1) ? t.recurDone : 1,
       shot: typeof t.shot === "string" ? t.shot : "",
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
       tags: Array.isArray(t.tags) ? t.tags : [],
@@ -1879,8 +1937,11 @@
     const allCount = state.tasks.filter(t => !t.completed && !isArchived(t.categoryId)).length;
     const e = endOfToday();
     const todayCount = state.tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() <= e && !isArchived(t.categoryId)).length;
+    const tw = tomorrowWindow();
+    const tomorrowCount = state.tasks.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() >= tw.start && new Date(t.deadline).getTime() <= tw.end && !isArchived(t.categoryId)).length;
     catList.appendChild(specialItem("all", "All Tasks", "#9089fc", allCount));
     catList.appendChild(specialItem("today", "Today", "#ef6c4d", todayCount));
+    catList.appendChild(specialItem("tomorrow", "Tomorrow", "#f59e0b", tomorrowCount));
     catList.appendChild(specialItem("insights", "Insights", "#0ea5e9", null, "📊"));
     catList.appendChild(specialItem("calendar", "Calendar", "#0ea5e9", null, "🗓"));
     activeCats().forEach(c => catList.appendChild(catItem(c, false, false)));
@@ -2151,6 +2212,8 @@
       createdAt: Date.now(),
       completedAt: null,
       recur: fields.recur || "none",
+      recurRule: sanitizeRule(fields.recurRule),
+      recurDone: 1,
       shot: fields.shot || "",
       subtasks: fields.subtasks || [],
       tags: fields.tags || [],
@@ -2233,7 +2296,7 @@
     if (!q.title) { $("taskTitle").focus(); return; }
 
     // Route to a notebook: #Notebook wins (created if missing), else current notebook, else first.
-    const isSpecial = ["all", "today", "insights", "calendar"].includes(activeCat);
+    const isSpecial = ["all", "today", "tomorrow", "insights", "calendar"].includes(activeCat);
     let cat, createdName = null;
     if (q.catName) { const r = resolveNotebook(q.catName); cat = r.id; if (r.created) createdName = r.name; }
     else cat = isSpecial ? (state.categories[0] && state.categories[0].id) : activeCat;
@@ -2257,13 +2320,16 @@
       state.tasks.push(createTaskObj({
         categoryId: cat, title: q.title, notes, priority,
         deadline: fieldDeadline || q.deadline || "",
-        recur: fieldRecur !== "none" ? fieldRecur : q.recur, tags, shot: composerShot
+        recur: fieldRecur !== "none" ? fieldRecur : q.recur,
+        recurRule: fieldRecur === "custom" ? composerRecurRule : null,
+        tags, shot: composerShot
       }));
     }
 
     $("taskTitle").value = ""; $("taskNotes").value = ""; $("taskTags").value = "";
     $("taskDeadline").value = ""; $("taskStart").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
     composerShot = ""; renderComposerShot();
+    composerRecurRule = null; prevComposerRecur = "none"; resetCustomOptionText($("taskRecur"));
     $("addCard").classList.remove("open");
     if (createdName) activeCat = cat; // jump to a freshly-created notebook so the item is visible
     save(); render();
@@ -2288,33 +2354,158 @@
       "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
 
+  // ---------- Custom recurrence engine (Google-Calendar-style rules) ----------
+  const DOW_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function sanitizeRule(r) {
+    if (!r || typeof r !== "object") return null;
+    const freq = ["day", "week", "month", "year"].includes(r.freq) ? r.freq : "week";
+    const interval = Math.max(1, Math.min(99, parseInt(r.interval) || 1));
+    let days = Array.isArray(r.days) ? r.days.map(Number).filter(d => d >= 0 && d <= 6) : [];
+    days = Array.from(new Set(days));
+    let end = { type: "never" };
+    if (r.end && typeof r.end === "object") {
+      if (r.end.type === "on" && r.end.date) end = { type: "on", date: String(r.end.date) };
+      else if (r.end.type === "after" && r.end.count) end = { type: "after", count: Math.max(1, parseInt(r.end.count) || 1) };
+    }
+    return { freq, interval, days: freq === "week" ? days : [], end };
+  }
+  // Resolve a task's effective rule (presets -> rule objects).
+  function recurRuleOf(t) {
+    if (!t || !t.recur || t.recur === "none") return null;
+    if (t.recur === "custom") return sanitizeRule(t.recurRule) || { freq: "week", interval: 1, days: [new Date().getDay()], end: { type: "never" } };
+    const map = { daily: "day", weekly: "week", monthly: "month" };
+    return { freq: map[t.recur] || "day", interval: 1, days: [], end: { type: "never" } };
+  }
+  function weekIndex(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - x.getDay()); return Math.round(x.getTime() / 86400000); }
+  function nextWeeklyByDay(base, days, interval) {
+    const set = new Set(days);
+    let cand = new Date(base);
+    for (let i = 0; i < 7; i++) {
+      cand.setDate(cand.getDate() + 1);
+      if (set.has(cand.getDay())) {
+        if (interval > 1 && weekIndex(cand) > weekIndex(base)) cand.setDate(cand.getDate() + (interval - 1) * 7);
+        return cand;
+      }
+    }
+    return cand;
+  }
+  // The next occurrence date for a task, or null if the series has ended.
+  function nextRecurrence(t) {
+    const rule = recurRuleOf(t); if (!rule) return null;
+    if (rule.end && rule.end.type === "after" && (t.recurDone || 1) >= (rule.end.count || 1)) return null;
+    const base = t.deadline ? new Date(t.deadline) : new Date();
+    let next;
+    if (rule.freq === "week" && rule.days && rule.days.length) next = nextWeeklyByDay(base, rule.days, rule.interval);
+    else if (rule.freq === "day") { next = new Date(base); next.setDate(next.getDate() + rule.interval); }
+    else if (rule.freq === "week") { next = new Date(base); next.setDate(next.getDate() + 7 * rule.interval); }
+    else if (rule.freq === "month") { next = new Date(base); next.setMonth(next.getMonth() + rule.interval); }
+    else if (rule.freq === "year") { next = new Date(base); next.setFullYear(next.getFullYear() + rule.interval); }
+    else { next = new Date(base); next.setDate(next.getDate() + 1); }
+    if (rule.end && rule.end.type === "on" && rule.end.date) {
+      const endMs = new Date(rule.end.date + "T23:59:59").getTime();
+      if (next.getTime() > endMs) return null;
+    }
+    return next;
+  }
+  // Human-readable summary of a rule, e.g. "Every 2 weeks on Mon, Wed · 13×".
+  function ruleSummary(rule) {
+    rule = sanitizeRule(rule); if (!rule) return "Custom";
+    const n = rule.interval || 1;
+    const unit = { day: "day", week: "week", month: "month", year: "year" }[rule.freq] || "week";
+    let s = n === 1 ? ({ day: "Daily", week: "Weekly", month: "Monthly", year: "Yearly" }[rule.freq] || "Weekly")
+                    : ("Every " + n + " " + unit + "s");
+    if (rule.freq === "week" && rule.days && rule.days.length && rule.days.length < 7) {
+      s += " on " + rule.days.slice().sort((a, b) => a - b).map(d => DOW_LONG[d]).join(", ");
+    }
+    if (rule.end) {
+      if (rule.end.type === "on" && rule.end.date) s += " · until " + fmtDate(new Date(rule.end.date + "T00:00"));
+      else if (rule.end.type === "after" && rule.end.count) s += " · " + rule.end.count + "\u00d7";
+    }
+    return s;
+  }
+  function recurLabelShort(t) {
+    if (!t.recur || t.recur === "none") return "";
+    if (t.recur === "custom") return ruleSummary(t.recurRule);
+    return RECUR_LABEL[t.recur] || "Repeats";
+  }
+  function toDateInput(d) { const p = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
+  function addDaysD(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+
+  // Open the custom-recurrence modal seeded with `rule`. onSave(rule|null) is called on Done/Turn-off; onCancel() on cancel.
+  function openRecurModal(rule, onSave, onCancel) {
+    rule = sanitizeRule(rule) || { freq: "week", interval: 1, days: [new Date().getDay()], end: { type: "never" } };
+    recurOnSave = onSave;
+    recurOnCancel = onCancel || null;
+    $("recurInterval").value = rule.interval || 1;
+    $("recurFreq").value = rule.freq || "week";
+    const dows = $("recurDows"); dows.innerHTML = "";
+    ["S", "M", "T", "W", "T", "F", "S"].forEach((lbl, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = lbl; b.dataset.d = i;
+      b.className = "dow" + ((rule.days || []).includes(i) ? " on" : "");
+      b.title = DOW_LONG[i];
+      b.onclick = () => b.classList.toggle("on");
+      dows.appendChild(b);
+    });
+    const et = (rule.end && rule.end.type) || "never";
+    document.querySelectorAll('input[name="recurEnd"]').forEach(r => { r.checked = (r.value === et); });
+    $("recurEndDate").value = (rule.end && rule.end.date) || toDateInput(addDaysD(new Date(), 30));
+    $("recurEndCount").value = (rule.end && rule.end.count) || 13;
+    updateRecurDaysVis();
+    $("recurModal").classList.add("open");
+  }
+  let recurOnCancel = null;
+  function updateRecurDaysVis() { $("recurDaysRow").style.display = $("recurFreq").value === "week" ? "flex" : "none"; }
+  function collectRecurRule() {
+    const freq = $("recurFreq").value;
+    const interval = Math.max(1, parseInt($("recurInterval").value) || 1);
+    const days = Array.from($("recurDows").querySelectorAll(".dow.on")).map(b => +b.dataset.d);
+    const endType = (document.querySelector('input[name="recurEnd"]:checked') || {}).value || "never";
+    const end = { type: endType };
+    if (endType === "on") end.date = $("recurEndDate").value || "";
+    if (endType === "after") end.count = Math.max(1, parseInt($("recurEndCount").value) || 1);
+    const rule = { freq, interval, days: freq === "week" ? days : [], end };
+    if (freq === "week" && !rule.days.length) rule.days = [new Date().getDay()];
+    return sanitizeRule(rule);
+  }
+  function setCustomOptionText(sel, txt) { const o = sel.querySelector('option[value="custom"]'); if (o) o.textContent = "⚙️ " + txt; }
+  function resetCustomOptionText(sel) { const o = sel.querySelector('option[value="custom"]'); if (o) o.textContent = "⚙️ Custom…"; }
+
   function toggleDone(id) {
     const t = state.tasks.find(x => x.id === id);
     if (!t) return;
     t.completed = !t.completed;
     t.completedAt = t.completed ? Date.now() : null;
-    // spawn next occurrence for recurring tasks (once)
+    // spawn next occurrence for recurring tasks (once), honoring custom rules + end conditions
     if (t.completed && t.recur && t.recur !== "none" && !t._spawned) {
       t._spawned = true;
-      state.tasks.push({
-        id: uid(),
-        categoryId: t.categoryId,
-        title: t.title,
-        notes: t.notes,
-        priority: t.priority,
-        deadline: t.deadline ? nextDeadline(t.deadline, t.recur) : "",
-        completed: false,
-        createdAt: Date.now(),
-        completedAt: null,
-        recur: t.recur,
-        shot: t.shot || "",
-        subtasks: t.subtasks.map(s => ({ id: uid(), text: s.text, done: false })),
-        tags: t.tags.slice(),
-        order: minOrder() - 1,
-        _spawned: false,
-        google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
-      });
-      toast("🔁 Next occurrence scheduled");
+      const nd = nextRecurrence(t);
+      if (nd) {
+        state.tasks.push({
+          id: uid(),
+          categoryId: t.categoryId,
+          title: t.title,
+          notes: t.notes,
+          priority: t.priority,
+          deadline: t.deadline ? toLocalInput(nd) : "",
+          completed: false,
+          createdAt: Date.now(),
+          completedAt: null,
+          recur: t.recur,
+          recurRule: t.recurRule ? JSON.parse(JSON.stringify(t.recurRule)) : null,
+          recurDone: (t.recurDone || 1) + 1,
+          shot: t.shot || "",
+          subtasks: t.subtasks.map(s => ({ id: uid(), text: s.text, done: false })),
+          tags: t.tags.slice(),
+          durationMin: t.durationMin || 0,
+          order: minOrder() - 1,
+          _spawned: false,
+          google: { taskId: null, taskListId: null, eventId: null, childMap: {} }
+        });
+        toast("🔁 Next occurrence scheduled");
+      } else {
+        toast("🔁 Recurring series complete");
+      }
     }
     if (!t.completed) removeNotified(t.id); // re-opened -> allow future reminder
     save(); render();
@@ -2448,10 +2639,16 @@
   }
 
   function endOfToday() { const d = new Date(); d.setHours(23, 59, 59, 999); return d.getTime(); }
+  function tomorrowWindow() {
+    const s = new Date(); s.setDate(s.getDate() + 1); s.setHours(0, 0, 0, 0);
+    const e = new Date(s); e.setHours(23, 59, 59, 999);
+    return { start: s.getTime(), end: e.getTime() };
+  }
   function scopeTasks() {
     if (activeTag) { const k = normTag(activeTag); return state.tasks.filter(t => !isArchived(t.categoryId) && (t.tags || []).some(x => normTag(x) === k)); }
     if (activeCat === "all") return state.tasks.filter(t => !isArchived(t.categoryId));
     if (activeCat === "today") { const e = endOfToday(); return state.tasks.filter(t => !isArchived(t.categoryId) && t.deadline && new Date(t.deadline).getTime() <= e); }
+    if (activeCat === "tomorrow") { const w = tomorrowWindow(); return state.tasks.filter(t => !isArchived(t.categoryId) && t.deadline && new Date(t.deadline).getTime() >= w.start && new Date(t.deadline).getTime() <= w.end); }
     return state.tasks.filter(t => t.categoryId === activeCat);
   }
   function selectTag(tag) {
@@ -2697,7 +2894,7 @@
       n += "Priority: " + PRIO_LABEL[t.priority];
       if (cat) n += "\nNotebook: " + cat.name;
       if (t.tags.length) n += "\nTags: " + t.tags.join(", ");
-      if (t.recur !== "none") n += "\nRepeat: " + RECUR_LABEL[t.recur];
+      if (t.recur !== "none") n += "\nRepeat: " + recurLabelShort(t);
       n += "\n\n— via TaskNest";
       return n;
     },
@@ -3499,6 +3696,30 @@
   $("cpModal").onclick = (e) => { if (e.target === $("cpModal")) $("cpModal").classList.remove("open"); };
   $("shotClose").onclick = () => $("shotModal").classList.remove("open");
   $("shotModal").onclick = (e) => { if (e.target === $("shotModal")) $("shotModal").classList.remove("open"); };
+  // Recurrence modal wiring
+  $("recurFreq").onchange = updateRecurDaysVis;
+  document.querySelectorAll('input[name="recurEnd"]').forEach(r => {
+    r.onchange = () => {}; // radios drive collectRecurRule directly
+  });
+  $("recurDone").onclick = () => {
+    const rule = collectRecurRule();
+    $("recurModal").classList.remove("open");
+    const cb = recurOnSave; recurOnSave = null; recurOnCancel = null;
+    if (cb) cb(rule);
+  };
+  $("recurClear").onclick = () => {
+    $("recurModal").classList.remove("open");
+    const cb = recurOnSave; recurOnSave = null; recurOnCancel = null;
+    if (cb) cb(null);
+  };
+  const recurCancelFn = () => {
+    $("recurModal").classList.remove("open");
+    const cb = recurOnCancel; recurOnSave = null; recurOnCancel = null;
+    if (cb) cb();
+  };
+  $("recurCancel").onclick = recurCancelFn;
+  $("recurModal").onclick = (e) => { if (e.target === $("recurModal")) recurCancelFn(); };
+
   $("settingsBtn").onclick = openSettings;
   $("settingsClose").onclick = () => $("settingsModal").classList.remove("open");
   $("settingsModal").onclick = (e) => { if (e.target === $("settingsModal")) $("settingsModal").classList.remove("open"); };
@@ -3548,6 +3769,7 @@
     renderCats();
     const catObj = activeCat === "all" ? { name: "All Tasks", color: "#9089fc" }
       : activeCat === "today" ? { name: "Today", color: "#ef6c4d" }
+      : activeCat === "tomorrow" ? { name: "Tomorrow", color: "#f59e0b" }
       : activeCat === "insights" ? { name: "📊 Insights", color: "#0ea5e9" }
       : activeCat === "calendar" ? { name: "🗓 Calendar", color: "#0ea5e9" }
       : state.categories.find(c => c.id === activeCat) || { name: "All Tasks", color: "#9089fc" };
@@ -3559,7 +3781,7 @@
     const isInsights = activeCat === "insights";
     const isCalendar = activeCat === "calendar";
     const isPanel = isInsights || isCalendar;
-    const isSpecial = isPanel || activeCat === "all" || activeCat === "today";
+    const isSpecial = isPanel || activeCat === "all" || activeCat === "today" || activeCat === "tomorrow";
     const curArchived = !isSpecial && isArchived(activeCat);
     $("archBanner").style.display = (!isPanel && curArchived) ? "flex" : "none";
     $("addCard").style.display = isPanel ? "none" : "";
@@ -3914,7 +4136,7 @@
 
   // ---------- Critical Path pop-up (mini-Gantt planner) ----------
   function openCriticalPath(scope) {
-    cpScope = (scope && !["all", "today", "insights", "calendar"].includes(scope)) ? scope : "all";
+    cpScope = (scope && !["all", "today", "tomorrow", "insights", "calendar"].includes(scope)) ? scope : "all";
     $("cpModal").classList.add("open");
     applyCPWindow();
     ensureCPObserver();
@@ -4572,7 +4794,7 @@
             ${isProject && t.deps && t.deps.length ? `<span class="badge dep" title="Starts after ${t.deps.length} project(s) finish">🔗 after ${t.deps.length}</span>` : ""}
             ${isProject && _inGraph.has(t.id) ? (_critAll.has(t.id) ? `<span class="badge crit-b" title="On the critical path — zero slack">⚡ Critical</span>` : `<span class="badge slack-b" title="Total float / slack">🟢 ${Math.round((_projFloat[t.id] || 0) / 86400000)}d slack</span>`) : ""}
             ${driftBadge(t)}
-            ${!isProject && t.recur !== "none" ? `<span class="badge recur">🔁 ${RECUR_LABEL[t.recur]}</span>` : ""}
+            ${!isProject && t.recur !== "none" ? `<span class="badge recur" title="${esc(ruleSummary(recurRuleOf(t)))}">🔁 ${esc(recurLabelShort(t))}</span>` : ""}
             ${subTotal ? `<span class="badge sub">☑ ${subDone}/${subTotal}</span>` : ""}
             ${t.shot ? `<button type="button" class="shot-chip" data-shotview="${t.id}" title="View attached screenshot">📎 Screenshot</button>` : ""}
             ${catBadge}
@@ -4655,6 +4877,7 @@
               <option value="daily" ${t.recur==="daily"?"selected":""}>🔁 Daily</option>
               <option value="weekly" ${t.recur==="weekly"?"selected":""}>🔁 Weekly</option>
               <option value="monthly" ${t.recur==="monthly"?"selected":""}>🔁 Monthly</option>
+              <option value="custom" ${t.recur==="custom"?"selected":""}>⚙️ ${t.recur==="custom" ? esc(ruleSummary(t.recurRule)) : "Custom…"}</option>
             </select>
           </div>
           <div class="field">
@@ -4726,6 +4949,15 @@
           const sh = setProjectDates(t, start, deadline);
           if (sh.length) toast("🔗 Shifted " + sh.length + " linked project" + (sh.length > 1 ? "s" : ""));
         }
+        else if (f === "recur" && el.value === "custom") {
+          openRecurModal(t.recurRule, (rule) => {
+            if (rule) { t.recurRule = rule; updateTask(t.id, { recur: "custom" }); }
+            else { t.recurRule = null; updateTask(t.id, { recur: "none" }); }
+            render();
+          }, () => { render(); });
+          return;
+        }
+        else if (f === "recur") { t.recurRule = null; updateTask(t.id, { recur: el.value }); }
         else if (f === "tags") updateTask(t.id, { tags: canonicalizeTags(el.value.split(",")) });
         else if (f === "deadline") updateTask(t.id, { deadline: el.value || "" });
         else if (f === "durationMin") updateTask(t.id, { durationMin: parseInt(el.value) || 0 });
@@ -4947,6 +5179,18 @@
   $("taskTitle").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addTask(); } });
   $("addTaskBtn").onclick = addTask;
 
+  // Composer recurrence: open the custom modal when "Custom…" is chosen
+  let prevComposerRecur = "none";
+  $("taskRecur").onchange = (e) => {
+    const v = e.target.value;
+    if (v === "custom") {
+      openRecurModal(composerRecurRule, (rule) => {
+        if (rule) { composerRecurRule = rule; setCustomOptionText($("taskRecur"), ruleSummary(rule)); $("taskRecur").value = "custom"; prevComposerRecur = "custom"; }
+        else { composerRecurRule = null; resetCustomOptionText($("taskRecur")); $("taskRecur").value = "none"; prevComposerRecur = "none"; }
+      }, () => { $("taskRecur").value = prevComposerRecur; });
+    } else { composerRecurRule = null; prevComposerRecur = v; }
+  };
+
   // Screenshot attach / upload / paste / remove in the composer
   $("shotAttach").onclick = () => $("shotFile").click();
   $("shotFile").onchange = (e) => {
@@ -4998,7 +5242,7 @@
   $("searchInput").addEventListener("input", e => { search = e.target.value; render(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal"), $("tagModal"), $("settingsModal")].forEach(mm => mm && mm.classList.remove("open"));
+      [catModal, gModal, ocrModal, $("drillModal"), $("fsModal"), $("cpModal"), $("shotModal"), $("tagModal"), $("settingsModal"), $("recurModal")].forEach(mm => mm && mm.classList.remove("open"));
       return;
     }
     const el = document.activeElement;

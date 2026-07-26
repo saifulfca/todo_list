@@ -684,6 +684,13 @@
   .task.is-project { border-left-color: #0ea5e9; }
   .badge.project { background: #e0f2fe; color: #0369a1; }
   html[data-theme="dark"] .badge.project { background: #0c3549; color: #7dd3fc; }
+  .badge.event { background: #ede9fe; color: #6d28d9; }
+  .badge.appt { background: #fce7f3; color: #be185d; }
+  .badge.loc { background: var(--surface-2); color: var(--text-soft); }
+  html[data-theme="dark"] .badge.event { background: #2e2465; color: #c4b5fd; }
+  html[data-theme="dark"] .badge.appt { background: #4a1533; color: #f9a8d4; }
+  .add-card.event-mode { border-color: #8b5cf6; }
+  .add-card.event-mode .add-plus { background: #ede9fe; color: #6d28d9; }
   .badge.range { background: var(--surface-2); color: var(--text-soft); }
   .proj-progress { margin-top: 9px; display: flex; align-items: center; gap: 9px; }
   .proj-progress .ptrack { flex: 1; height: 6px; background: var(--surface-2); border-radius: 20px; overflow: hidden; max-width: 260px; }
@@ -1164,6 +1171,8 @@
             <div class="type-toggle" id="typeToggle">
               <button type="button" class="tt-btn active" data-type="task">✓ Task</button>
               <button type="button" class="tt-btn" data-type="project">📊 Project</button>
+              <button type="button" class="tt-btn" data-type="event">📅 Event</button>
+              <button type="button" class="tt-btn" data-type="appointment">📌 Appointment</button>
             </div>
             <div class="add-controls">
               <div class="field">
@@ -1192,6 +1201,14 @@
                   <option value="custom">⚙️ Custom…</option>
                 </select>
               </div>
+              <div class="field" id="locationField" style="display:none">
+                <label id="locationLabel">Location</label>
+                <input type="text" class="text-in" id="taskLocation" placeholder="Where / who" />
+              </div>
+              <div class="field" id="allDayField" style="display:none">
+                <label>All day</label>
+                <label class="switch sm" style="margin-top:4px"><input type="checkbox" id="taskAllDay" /><span class="track"></span></label>
+              </div>
               <button class="add-btn" id="addTaskBtn">Add Task</button>
             </div>
             <div class="qa-hint" id="qaHint">Quick add — type it in the title: <b>#Notebook</b> (creates it if new) · <b>+tag</b> · <b>!high</b>/<b>!med</b>/<b>!low</b> · dates like <b>by today 4pm</b> · repeats like <b>every Monday</b></div>
@@ -1205,6 +1222,7 @@
           <button class="chip" data-filter="done">Completed</button>
           <button class="chip" data-filter="high">High priority</button>
           <button class="chip" data-filter="today">Due soon</button>
+          <button class="chip" data-filter="events">📅 Events</button>
           <button class="chip" id="cpChip" style="display:none">⚡ Critical Path</button>
           <button class="chip" id="clearDone" style="margin-left:auto">🧹 Clear completed</button>
           <select class="sort-select" id="sortSelect" style="margin-left:8px">
@@ -1618,9 +1636,11 @@
       title: t.title || "",
       notes: t.notes || "",
       priority: t.priority || "med",
-      type: t.type === "project" ? "project" : "task",
+      type: ["project", "event", "appointment"].includes(t.type) ? t.type : "task",
       start: t.start || "",
       deadline: t.deadline || "",
+      location: typeof t.location === "string" ? t.location : "",
+      allDay: !!t.allDay,
       completed: !!t.completed,
       createdAt: t.createdAt || Date.now(),
       completedAt: t.completedAt || null,
@@ -2205,9 +2225,11 @@
       title: fields.title || "",
       notes: fields.notes || "",
       priority: fields.priority || "med",
-      type: fields.type === "project" ? "project" : "task",
+      type: ["project", "event", "appointment"].includes(fields.type) ? fields.type : "task",
       start: fields.start || "",
       deadline: fields.deadline || "",
+      location: fields.location || "",
+      allDay: !!fields.allDay,
       completed: false,
       createdAt: Date.now(),
       completedAt: null,
@@ -2314,6 +2336,13 @@
       if (!end) { toast("Set an end date for the project"); return; }
       if (new Date(end) < new Date(start)) { toast("⚠ End is before start"); return; }
       state.tasks.push(createTaskObj({ categoryId: cat, title: q.title, notes, priority, type: "project", start, deadline: end, tags, shot: composerShot }));
+    } else if (addType === "event" || addType === "appointment") {
+      const start = $("taskStart").value || toLocalInput(new Date());
+      let end = $("taskDeadline").value || "";
+      const allDay = addType === "event" && $("taskAllDay").checked;
+      if (!end) { const e = new Date(start); e.setHours(e.getHours() + 1); end = toLocalInput(e); }
+      if (new Date(end) < new Date(start)) { toast("⚠ End is before start"); return; }
+      state.tasks.push(createTaskObj({ categoryId: cat, title: q.title, notes, priority, type: addType, start, deadline: end, location: $("taskLocation").value.trim(), allDay, tags, shot: composerShot }));
     } else {
       const fieldDeadline = $("taskDeadline").value;
       const fieldRecur = $("taskRecur").value;
@@ -2328,6 +2357,7 @@
 
     $("taskTitle").value = ""; $("taskNotes").value = ""; $("taskTags").value = "";
     $("taskDeadline").value = ""; $("taskStart").value = ""; $("taskPriority").value = "med"; $("taskRecur").value = "none";
+    $("taskLocation").value = ""; $("taskAllDay").checked = false;
     composerShot = ""; renderComposerShot();
     composerRecurRule = null; prevComposerRecur = "none"; resetCustomOptionText($("taskRecur"));
     $("addCard").classList.remove("open");
@@ -2338,8 +2368,11 @@
     if (createdName) bits.push("🆕 notebook “" + createdName + "”");
     else if (q.catName) bits.push("→ " + (state.categories.find(c => c.id === cat) || {}).name);
     if (addType === "project") bits.push("📊 project");
+    else if (addType === "event") bits.push("📅 event");
+    else if (addType === "appointment") bits.push("📌 appointment");
     else if (q.deadline && !$("taskDeadline").value) bits.push("📅 due set");
-    toast((addType === "project" ? "Project added ✓" : "Task added ✓") + (bits.length ? "  ·  " + bits.join(" · ") : ""));
+    const addedLabel = { project: "Project added ✓", event: "Event added ✓", appointment: "Appointment added ✓" }[addType] || "Task added ✓";
+    toast(addedLabel + (bits.length ? "  ·  " + bits.join(" · ") : ""));
   }
 
   function nextDeadline(iso, recur) {
@@ -2352,6 +2385,19 @@
     const pad = n => String(n).padStart(2, "0");
     return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) +
       "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  // Human-readable time range for an event/appointment.
+  function eventTimeLabel(t) {
+    if (!t.start && !t.deadline) return "";
+    const s = t.start ? new Date(t.start) : new Date(t.deadline);
+    const e = t.deadline ? new Date(t.deadline) : null;
+    if (t.type === "event" && t.allDay) return "All day · " + fmtDate(s);
+    const timeStr = d => d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const sameDay = e && s.toDateString() === e.toDateString();
+    let out = fmtDate(s) + " " + timeStr(s);
+    if (e) out += sameDay ? "–" + timeStr(e) : " → " + fmtDate(e) + " " + timeStr(e);
+    return out;
   }
 
   // ---------- Custom recurrence engine (Google-Calendar-style rules) ----------
@@ -2668,6 +2714,7 @@
       const soon = Date.now() + 2 * 86400000;
       arr = arr.filter(t => !t.completed && t.deadline && new Date(t.deadline).getTime() <= soon);
     }
+    else if (filter === "events") arr = arr.filter(t => t.type === "event" || t.type === "appointment");
     if (search) {
       const q = search.toLowerCase().replace(/^#/, "");
       arr = arr.filter(t =>
@@ -2938,15 +2985,27 @@
     },
 
     async upsertEvent(t) {
-      if (!t.deadline) throw { custom: "Set a deadline to sync with Google Calendar" };
       await this.ensureToken();
-      const start = new Date(t.deadline), end = new Date(start.getTime() + 3600000);
-      const resource = {
-        summary: t.title,
-        description: this.composeNotes(t),
-        start: { dateTime: start.toISOString() },
-        end: { dateTime: end.toISOString() }
-      };
+      const timed = t.type === "event" || t.type === "appointment" || t.type === "project";
+      let start, end;
+      if (timed) {
+        if (!t.start && !t.deadline) throw { custom: "Set a start/end time to sync with Google Calendar" };
+        start = new Date(t.start || t.deadline);
+        end = new Date(t.deadline || t.start);
+        if (!(end > start)) end = new Date(start.getTime() + 3600000);
+      } else {
+        if (!t.deadline) throw { custom: "Set a deadline to sync with Google Calendar" };
+        start = new Date(t.deadline); end = new Date(start.getTime() + 3600000);
+      }
+      const resource = { summary: t.title, description: this.composeNotes(t) };
+      if (t.type === "event" && t.allDay) {
+        resource.start = { date: toDateInput(start) };
+        resource.end = { date: toDateInput(addDaysD(end, 1)) };
+      } else {
+        resource.start = { dateTime: start.toISOString() };
+        resource.end = { dateTime: end.toISOString() };
+      }
+      if (t.location) resource.location = t.location;
       const rr = { daily: "DAILY", weekly: "WEEKLY", monthly: "MONTHLY" }[t.recur];
       if (rr) resource.recurrence = ["RRULE:FREQ=" + rr];
       let res;
@@ -4765,6 +4824,7 @@
     const li = document.createElement("li");
     const isOpen = expanded.has(t.id);
     const isProject = t.type === "project";
+    const isEvent = t.type === "event" || t.type === "appointment";
     const pp = isProject ? projectProgress(t) : null;
     li.className = `task p-${t.priority}` + (t.completed ? " done" : "") + (isOpen ? " expanded" : "") + (isProject ? " is-project" : "");
     li.dataset.id = t.id;
@@ -4787,10 +4847,14 @@
           ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ""}
           <div class="task-meta">
             ${isProject ? `<span class="badge project">📊 Project</span>` : ""}
-            <span class="badge ${t.priority}">${prioDot(t.priority)} ${PRIO_LABEL[t.priority]}</span>
-            ${isProject
-              ? (rangeLabel(t) ? `<span class="badge range">🗓 ${esc(rangeLabel(t))}</span>` : "")
-              : (di ? `<span class="badge date ${di.cls}">🕒 ${esc(di.txt)}</span>` : "")}
+            ${t.type === "event" ? `<span class="badge event">📅 Event</span>` : ""}
+            ${t.type === "appointment" ? `<span class="badge appt">📌 Appointment</span>` : ""}
+            ${isEvent ? "" : `<span class="badge ${t.priority}">${prioDot(t.priority)} ${PRIO_LABEL[t.priority]}</span>`}
+            ${isEvent
+              ? `<span class="badge range">🕒 ${esc(eventTimeLabel(t))}</span>` + (t.location ? `<span class="badge loc">📍 ${esc(t.location)}</span>` : "")
+              : (isProject
+                ? (rangeLabel(t) ? `<span class="badge range">🗓 ${esc(rangeLabel(t))}</span>` : "")
+                : (di ? `<span class="badge date ${di.cls}">🕒 ${esc(di.txt)}</span>` : ""))}
             ${isProject && t.deps && t.deps.length ? `<span class="badge dep" title="Starts after ${t.deps.length} project(s) finish">🔗 after ${t.deps.length}</span>` : ""}
             ${isProject && _inGraph.has(t.id) ? (_critAll.has(t.id) ? `<span class="badge crit-b" title="On the critical path — zero slack">⚡ Critical</span>` : `<span class="badge slack-b" title="Total float / slack">🟢 ${Math.round((_projFloat[t.id] || 0) / 86400000)}d slack</span>`) : ""}
             ${driftBadge(t)}
@@ -4865,7 +4929,21 @@
               <select class="dep-proj" data-depadd title="Add a project this one must start after"></select>
             </div>
             <div class="dep-hint">Shows projects from the chosen notebook only — switch the notebook to link across notebooks.</div>
-          </div>` : `
+          </div>` : isEvent ? `
+          <div class="field">
+            <label>Start</label>
+            <input type="datetime-local" data-edit="start" value="${t.start}" />
+          </div>
+          <div class="field">
+            <label>End</label>
+            <input type="datetime-local" data-edit="deadline" value="${t.deadline}" />
+          </div>
+          <div class="field" style="flex:1;min-width:160px">
+            <label>${t.type === "appointment" ? "Location / with" : "Location"}</label>
+            <input type="text" class="text-in" data-edit="location" value="${esc(t.location || "")}" />
+          </div>
+          ${t.type === "event" ? `<div class="field"><label>All day</label><label class="switch sm" style="margin-top:4px"><input type="checkbox" data-edit="allDay" ${t.allDay ? "checked" : ""}/><span class="track"></span></label></div>` : ""}
+          ` : `
           <div class="field">
             <label>Deadline</label>
             <input type="datetime-local" data-edit="deadline" value="${t.deadline}" />
@@ -4961,6 +5039,8 @@
         else if (f === "tags") updateTask(t.id, { tags: canonicalizeTags(el.value.split(",")) });
         else if (f === "deadline") updateTask(t.id, { deadline: el.value || "" });
         else if (f === "durationMin") updateTask(t.id, { durationMin: parseInt(el.value) || 0 });
+        else if (f === "allDay") updateTask(t.id, { allDay: el.checked });
+        else if (f === "location") updateTask(t.id, { location: el.value });
         else updateTask(t.id, { [f]: el.value });
         render();
       };
@@ -5220,18 +5300,29 @@
 
   // Task / Project mode toggle
   function applyAddType() {
-    addCard.classList.toggle("project-mode", addType === "project");
-    document.querySelectorAll("#typeToggle .tt-btn").forEach(b => b.classList.toggle("active", b.dataset.type === addType));
     const proj = addType === "project";
-    $("startField").style.display = proj ? "" : "none";
-    $("repeatField").style.display = proj ? "none" : "";
-    $("deadlineLabel").textContent = proj ? "End" : "Deadline";
-    $("addTaskBtn").textContent = proj ? "Add Project" : "Add Task";
-    $("taskTitle").placeholder = proj ? "Name your project…" : "Add a task and press Enter…";
-    $("qaHint").style.display = proj ? "none" : "";
+    const isEvt = addType === "event" || addType === "appointment";
+    addCard.classList.toggle("project-mode", proj);
+    addCard.classList.toggle("event-mode", isEvt);
+    document.querySelectorAll("#typeToggle .tt-btn").forEach(b => b.classList.toggle("active", b.dataset.type === addType));
+    $("startField").style.display = (proj || isEvt) ? "" : "none";
+    $("repeatField").style.display = (proj || isEvt) ? "none" : "";
+    $("locationField").style.display = isEvt ? "" : "none";
+    $("allDayField").style.display = (addType === "event") ? "" : "none";
+    const prioField = $("taskPriority").closest(".field"); if (prioField) prioField.style.display = isEvt ? "none" : "";
+    $("locationLabel").textContent = addType === "appointment" ? "Location / with" : "Location";
+    $("deadlineLabel").textContent = (proj || isEvt) ? "End" : "Deadline";
+    const label = { task: "Add Task", project: "Add Project", event: "Add Event", appointment: "Add Appointment" }[addType] || "Add Task";
+    $("addTaskBtn").textContent = label;
+    const ph = { task: "Add a task and press Enter…", project: "Name your project…", event: "Add an event…", appointment: "Add an appointment…" }[addType];
+    $("taskTitle").placeholder = ph || "Add a task and press Enter…";
+    $("qaHint").style.display = (addType === "task") ? "" : "none";
   }
   document.querySelectorAll("#typeToggle .tt-btn").forEach(b => {
-    b.onclick = () => { addType = b.dataset.type; addCard.classList.add("open"); applyAddType(); if (addType === "project" && !$("taskStart").value) $("taskStart").value = toLocalInput(new Date()); };
+    b.onclick = () => {
+      addType = b.dataset.type; addCard.classList.add("open"); applyAddType();
+      if ((addType === "project" || addType === "event" || addType === "appointment") && !$("taskStart").value) $("taskStart").value = toLocalInput(new Date());
+    };
   });
   document.addEventListener("click", e => {
     if (!addCard.contains(e.target) && !$("taskTitle").value && !$("taskNotes").value && !$("taskTags").value && !composerShot)

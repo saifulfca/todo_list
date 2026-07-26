@@ -1,5 +1,5 @@
 /* TaskNest service worker — network-first so updates always show, cache for offline */
-const CACHE = "tasknest-v3";
+const CACHE = "tasknest-v5";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
